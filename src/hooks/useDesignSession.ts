@@ -7,6 +7,12 @@ import {
 } from '../types';
 import { generateKMaps, getExampleData } from '../utils/circuitData';
 import { validateStateTable } from '../utils/validation';
+import { autoCompleteMissingInputs, statesWithMissingInputs } from '../utils/stateTableUtils';
+import {
+  needsInputNormalization,
+  normalizeStateTableInputs,
+} from '../utils/inputNormalization';
+import { parseInputVarNames } from '../utils/kmapEngine';
 
 const defaultRows = (newId: () => string): StateRow[] => [
   { id: newId(), presentState: 'S0', input: '0', nextState: 'S0', output: '0' },
@@ -31,6 +37,11 @@ export interface DesignSession {
   handleDeleteRow: (id: string) => void;
   handleClear: () => void;
   handleLoadExample: () => void;
+  handleAutoComplete: () => void;
+  canAutoComplete: boolean;
+  handleInputVarsChange: (value: string) => void;
+  handleNormalizeInputs: () => void;
+  canNormalize: boolean;
   handleGenerate: () => void;
   handleExport: () => void;
   setActiveTab: (tab: OutputTab) => void;
@@ -67,6 +78,36 @@ export function useDesignSession(): DesignSession {
     },
     [markStale]
   );
+
+  const handleInputVarsChange = useCallback(
+    (value: string) => {
+      setDesign((prev) => {
+        const prevBits = parseInputVarNames(prev.inputVars).length;
+        const nextBits = parseInputVarNames(value).length;
+        const shouldMigrate = prevBits !== nextBits && prev.stateTable.length > 0;
+
+        return {
+          ...prev,
+          inputVars: value,
+          stateTable: shouldMigrate
+            ? normalizeStateTableInputs(prev.stateTable, value)
+            : prev.stateTable,
+        };
+      });
+      markStale();
+      setValidationErrors([]);
+    },
+    [markStale]
+  );
+
+  const handleNormalizeInputs = useCallback(() => {
+    setDesign((prev) => ({
+      ...prev,
+      stateTable: normalizeStateTableInputs(prev.stateTable, prev.inputVars),
+    }));
+    markStale();
+    setValidationErrors([]);
+  }, [markStale]);
 
   const handleRowChange = useCallback(
     (id: string, field: keyof StateRow, value: string) => {
@@ -113,17 +154,31 @@ export function useDesignSession(): DesignSession {
   }, []);
 
   const handleLoadExample = useCallback(() => {
-    const rows = getExampleData(design.modelType, design.flipFlopType).map((row) => ({
-      ...row,
-      id: newId(),
-    }));
-    setDesign((prev) => ({ ...prev, stateTable: rows }));
+    setDesign((prev) => {
+      const rows = getExampleData(prev.modelType, prev.flipFlopType).map((row) => ({
+        ...row,
+        id: newId(),
+      }));
+      return {
+        ...prev,
+        stateTable: normalizeStateTableInputs(rows, prev.inputVars),
+      };
+    });
     setKmaps([]);
     setHasGenerated(false);
     setIsStale(false);
     setValidationErrors([]);
     setValidationWarnings([]);
-  }, [design.modelType, design.flipFlopType, newId]);
+  }, [newId]);
+
+  const handleAutoComplete = useCallback(() => {
+    setDesign((prev) => ({
+      ...prev,
+      stateTable: autoCompleteMissingInputs(prev.stateTable, prev.inputVars, newId),
+    }));
+    markStale();
+    setValidationErrors([]);
+  }, [markStale, newId]);
 
   const handleGenerate = useCallback(() => {
     const result = validateStateTable(
@@ -191,6 +246,11 @@ export function useDesignSession(): DesignSession {
         row.input.trim() !== ''
     ) && !isLoading;
 
+  const canAutoComplete =
+    statesWithMissingInputs(design.stateTable, design.inputVars).length > 0;
+
+  const canNormalize = needsInputNormalization(design.stateTable, design.inputVars);
+
   return {
     design,
     activeTab,
@@ -207,6 +267,11 @@ export function useDesignSession(): DesignSession {
     handleDeleteRow,
     handleClear,
     handleLoadExample,
+    handleAutoComplete,
+    canAutoComplete,
+    handleInputVarsChange,
+    handleNormalizeInputs,
+    canNormalize,
     handleGenerate,
     handleExport,
     setActiveTab,

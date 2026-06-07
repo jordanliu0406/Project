@@ -1,5 +1,15 @@
 import { ModelType, StateRow } from '../types';
-import { parseInputVarNames, parseInputCode } from './kmapEngine';
+import { parseInputVarNames } from './kmapEngine';
+import {
+  collectStateOrder,
+  formatMissingInputErrors,
+  stateEncodingBits,
+} from './stateTableUtils';
+import {
+  formatInputNormalizationErrors,
+  formatCanonicalInput,
+  parseInputCodeLoose,
+} from './inputNormalization';
 
 export interface ValidationResult {
   valid: boolean;
@@ -29,9 +39,17 @@ export function validateStateTable(
     return { valid: false, errors, warnings };
   }
 
+  // Require fixed-width binary inputs before any other checks.
+  errors.push(...formatInputNormalizationErrors(rows, inputVars));
+
   const transitions = new Map<string, { nextState: string; output: string }>();
   for (const row of complete) {
-    const key = `${row.presentState.trim()}:${row.input.trim()}`;
+    const inputCode = parseInputCodeLoose(row.input, numInputBits);
+    const canonicalInput =
+      inputCode !== null
+        ? formatCanonicalInput(inputCode, numInputBits)
+        : row.input.trim();
+    const key = `${row.presentState.trim()}:${canonicalInput}`;
     const nextState = row.nextState.trim();
     const output = row.output.trim();
     const existing = transitions.get(key);
@@ -39,7 +57,7 @@ export function validateStateTable(
     if (existing) {
       if (existing.nextState !== nextState || existing.output !== output) {
         errors.push(
-          `Conflicting transitions for present state "${row.presentState.trim()}" with input "${row.input.trim()}".`
+          `Conflicting transitions for present state "${row.presentState.trim()}" with input "${canonicalInput}".`
         );
       }
     } else {
@@ -64,22 +82,8 @@ export function validateStateTable(
     }
   }
 
-  for (const row of complete) {
-    const parsed = parseInputCode(row.input, numInputBits);
-    if (parsed === null) {
-      errors.push(
-        `Invalid input "${row.input.trim()}" for ${numInputBits} input variable(s) (${inputNames.join(', ')}). Use ${numInputBits}-bit binary (e.g. ${'0'.repeat(numInputBits)}–${'1'.repeat(numInputBits)}).`
-      );
-    }
-  }
-
-  const states = new Set<string>();
-  for (const row of complete) {
-    states.add(row.presentState.trim());
-    states.add(row.nextState.trim());
-  }
-
-  const numFF = Math.max(1, Math.ceil(Math.log2(Math.max(states.size, 1))));
+  const stateOrder = collectStateOrder(rows);
+  const numFF = stateEncodingBits(stateOrder.length);
   const totalVariables = numFF + numInputBits;
 
   if (totalVariables > 6) {
@@ -88,32 +92,7 @@ export function validateStateTable(
     );
   }
 
-  const expectedInputs = 1 << numInputBits;
-  const definedInputs = new Set(
-    complete
-      .map((row) => parseInputCode(row.input, numInputBits))
-      .filter((value): value is number => value !== null)
-  );
-
-  for (const state of states) {
-    const coveredInputs = complete
-      .filter((row) => row.presentState.trim() === state)
-      .map((row) => parseInputCode(row.input, numInputBits))
-      .filter((value): value is number => value !== null);
-
-    if (coveredInputs.length > 0 && coveredInputs.length < expectedInputs) {
-      warnings.push(
-        `State "${state}" defines ${coveredInputs.length}/${expectedInputs} input combinations; missing entries are treated as don't-cares.`
-      );
-      break;
-    }
-  }
-
-  if (definedInputs.size < expectedInputs) {
-    warnings.push(
-      `The state table defines ${definedInputs.size}/${expectedInputs} unique input combinations for ${inputNames.join(', ')}.`
-    );
-  }
+  errors.push(...formatMissingInputErrors(rows, inputVars));
 
   return { valid: errors.length === 0, errors, warnings };
 }

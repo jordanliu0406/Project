@@ -1,4 +1,6 @@
 import ModelConfig from './components/ModelConfig';
+import StateEncodingPanel from './components/StateEncodingPanel';
+import MissingInputsPanel from './components/MissingInputsPanel';
 import StateTableEditor from './components/StateTableEditor';
 import RightPanel from './components/RightPanel';
 import BottomBar from './components/BottomBar';
@@ -22,6 +24,11 @@ export default function App() {
     handleDeleteRow,
     handleClear,
     handleLoadExample,
+    handleAutoComplete,
+    canAutoComplete,
+    handleInputVarsChange,
+    handleNormalizeInputs,
+    canNormalize,
     handleGenerate,
     handleExport,
     setActiveTab,
@@ -101,18 +108,26 @@ export default function App() {
               </div>
             )}
 
+            <StateEncodingPanel rows={design.stateTable} />
+
+            <MissingInputsPanel rows={design.stateTable} inputVars={design.inputVars} />
+
             <StateTableEditor
               modelType={design.modelType}
               inputVars={design.inputVars}
               outputVars={design.outputVars}
               rows={design.stateTable}
-              onInputVarsChange={(v) => updateDesign('inputVars', v)}
+              onInputVarsChange={handleInputVarsChange}
               onOutputVarsChange={(v) => updateDesign('outputVars', v)}
               onRowChange={handleRowChange}
               onAddRow={handleAddRow}
               onDeleteRow={handleDeleteRow}
               onClear={handleClear}
               onLoadExample={handleLoadExample}
+              onAutoComplete={handleAutoComplete}
+              canAutoComplete={canAutoComplete}
+              onNormalizeInputs={handleNormalizeInputs}
+              canNormalize={canNormalize}
             />
           </div>
         </aside>

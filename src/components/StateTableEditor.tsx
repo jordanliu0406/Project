@@ -1,6 +1,7 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Wand2, AlignJustify } from 'lucide-react';
 import { StateRow, ModelType } from '../types';
+import { parseInputVarNames } from '../utils/kmapEngine';
 
 interface Props {
   modelType: ModelType;
@@ -14,6 +15,10 @@ interface Props {
   onDeleteRow: (id: string) => void;
   onClear: () => void;
   onLoadExample: () => void;
+  onAutoComplete: () => void;
+  canAutoComplete: boolean;
+  onNormalizeInputs: () => void;
+  canNormalize: boolean;
 }
 
 const StateTableEditor: React.FC<Props> = ({
@@ -28,8 +33,13 @@ const StateTableEditor: React.FC<Props> = ({
   onDeleteRow,
   onClear,
   onLoadExample,
+  onAutoComplete,
+  canAutoComplete,
+  onNormalizeInputs,
+  canNormalize,
 }) => {
   const outputLabel = modelType === 'moore' ? 'Z (State Output)' : 'Z (Trans. Output)';
+  const inputBitCount = parseInputVarNames(inputVars).length;
 
   return (
     <div className="space-y-4">
@@ -45,6 +55,9 @@ const StateTableEditor: React.FC<Props> = ({
             placeholder="e.g. X or X,Y"
             className="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-colors"
           />
+          <p className="mt-1 text-[11px] text-gray-500">
+            Inputs use {inputBitCount}-bit binary ({'0'.repeat(inputBitCount)}–{'1'.repeat(inputBitCount)})
+          </p>
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
@@ -141,7 +154,25 @@ const StateTableEditor: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="flex gap-2.5">
+      <div className="flex flex-col sm:flex-row gap-2.5">
+        <button
+          type="button"
+          onClick={onNormalizeInputs}
+          disabled={!canNormalize}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-purple-500/40 text-purple-300 text-sm font-medium hover:border-purple-500 hover:bg-purple-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-purple-500/40"
+        >
+          <AlignJustify size={14} />
+          Normalize Inputs
+        </button>
+        <button
+          type="button"
+          onClick={onAutoComplete}
+          disabled={!canAutoComplete}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-amber-500/40 text-amber-300 text-sm font-medium hover:border-amber-500 hover:bg-amber-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-amber-500/40"
+        >
+          <Wand2 size={14} />
+          Auto Complete Missing Inputs
+        </button>
         <button
           type="button"
           onClick={onClear}

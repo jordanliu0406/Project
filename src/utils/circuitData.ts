@@ -7,6 +7,8 @@ import {
   fillDontCareMap,
   excitationLabel,
 } from './kmapEngine';
+import { collectStateOrder, stateEncodingBits } from './stateTableUtils';
+import { normalizeStateTableInputs } from './inputNormalization';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Example state tables
@@ -61,17 +63,6 @@ function tExcitation(current: number, next: number): string {
   return current === next ? '0' : '1';
 }
 
-function collectStateOrder(rows: StateRow[]): string[] {
-  const stateOrder: string[] = [];
-  for (const row of rows) {
-    const present = row.presentState.trim();
-    const next = row.nextState.trim();
-    if (present && !stateOrder.includes(present)) stateOrder.push(present);
-    if (next && !stateOrder.includes(next)) stateOrder.push(next);
-  }
-  return stateOrder;
-}
-
 function buildKMapEntry(label: string, valueMap: Map<number, string>, numFF: number, inputNames: string[]): KMap {
   const filled = fillDontCareMap(valueMap, numFF, inputNames.length);
   const { rows, cols, cells, equation } = buildKMapFromValueMap(filled, numFF, inputNames);
@@ -84,7 +75,8 @@ export function generateKMaps(
   modelType: ModelType = 'mealy',
   inputVars = 'X'
 ): KMap[] {
-  const rows = stateTable.filter(
+  const normalizedTable = normalizeStateTableInputs(stateTable, inputVars);
+  const rows = normalizedTable.filter(
     (row) => row.presentState.trim() && row.nextState.trim() && row.input.trim() !== ''
   );
 
@@ -94,8 +86,7 @@ export function generateKMaps(
   const numInputBits = inputNames.length;
 
   const stateOrder = collectStateOrder(rows);
-  const numStates = stateOrder.length;
-  const numFF = Math.max(1, Math.ceil(Math.log2(Math.max(numStates, 1))));
+  const numFF = stateEncodingBits(stateOrder.length);
 
   const stateCode = new Map<string, number>();
   stateOrder.forEach((state, index) => stateCode.set(state, index));

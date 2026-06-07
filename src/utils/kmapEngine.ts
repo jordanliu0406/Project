@@ -27,33 +27,16 @@ export function parseInputVarNames(inputVars: string): string[] {
   return names.length > 0 ? names : ['X'];
 }
 
-/** Parse an input column value into an unsigned binary code. */
+/** Parse canonical fixed-width binary input (exactly `numInputBits` digits). */
 export function parseInputCode(raw: string, numInputBits: number): number | null {
   const value = raw.trim();
   if (!value) return null;
 
-  if (/^[01]+$/.test(value)) {
-    if (value.length > numInputBits) return null;
-    return parseInt(value.padStart(numInputBits, '0'), 2);
+  if (!/^[01]+$/.test(value) || value.length !== numInputBits) {
+    return null;
   }
 
-  if (/^[01]+(?:,[01]+)*$/.test(value)) {
-    const bits = value.split(',').map((bit) => bit.trim());
-    if (bits.length !== numInputBits || bits.some((bit) => bit !== '0' && bit !== '1')) {
-      return null;
-    }
-    return bits.reduce((acc, bit) => (acc << 1) | Number(bit), 0);
-  }
-
-  if (/^\d+$/.test(value)) {
-    const numeric = Number(value);
-    if (!Number.isInteger(numeric) || numeric < 0 || numeric >= 2 ** numInputBits) {
-      return null;
-    }
-    return numeric;
-  }
-
-  return null;
+  return parseInt(value, 2);
 }
 
 export function formatBinary(value: number, bits: number): string {
