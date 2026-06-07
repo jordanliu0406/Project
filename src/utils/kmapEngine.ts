@@ -63,11 +63,13 @@ export function formatBinary(value: number, bits: number): string {
 /** Reflected binary Gray code for `numBits` (MSB-first ordering). */
 export function grayCode(numBits: number): number[] {
   if (numBits <= 0) return [0];
+  if (numBits === 1) return [0, 1];
 
   let codes = [0, 1];
   for (let bit = 2; bit <= numBits; bit += 1) {
-    const mirrored = [...codes].reverse().map((code) => code | (1 << (bit - 1)));
-    codes = codes.map((code) => code << 1).concat(mirrored);
+    const highBit = 1 << (bit - 1);
+    const mirrored = [...codes].reverse().map((code) => code | highBit);
+    codes = codes.concat(mirrored);
   }
   return codes;
 }
