@@ -147,7 +147,7 @@ const JKCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, m
       ]} color={CYAN} w={1.6} />
       <Dot x={358} y={xBusY} color={CYAN} />
 
-      {/* X  → AND(Z1) top input (ONLY for Mealy model) */}
+      {/* AZ1 top input: X for Mealy, Q1 for Moore */}
       {modelType === 'mealy' && (
         <>
           <Wire pts={[
@@ -155,6 +155,16 @@ const JKCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, m
             { x: AZ1.x + 4 + GATE_PIN_TOP, y: AZ1.y + GATE_PIN_TOP },
           ]} color={CYAN} w={1.6} />
           <Dot x={AZ1.x + 4 + GATE_PIN_TOP} y={xBusY} color={CYAN} />
+        </>
+      )}
+      {modelType === 'moore' && (
+        <>
+          <Wire pts={[
+            { x: 158, y: q1BotY },
+            { x: 158, y: AZ1.y + GATE_PIN_TOP },
+            { x: AZ1.x, y: AZ1.y + GATE_PIN_TOP },
+          ]} color={WHITE} w={1.5} />
+          <Dot x={158} y={q1BotY} color={WHITE} />
         </>
       )}
 
@@ -377,24 +387,25 @@ const JKCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, m
             { x: OZ.x + 4, y: AZ2.y + GATE_PIN_OUT },
             { x: OZ.x + 4, y: OZ.y + GATE_PIN_BOT + 3 },
           ]} color={WHITE} w={1.5} />
+
+          {/* OR(Z) output → Z label (Mealy only) */}
+          <Wire pts={[
+            { x: orOutX(OZ.x), y: OZ.y + GATE_PIN_OUT },
+            { x: SVG_W - 15, y: OZ.y + GATE_PIN_OUT },
+          ]} color={CYAN} w={1.8} />
         </>
       )}
 
-      {/* For Moore: AND(Z1) directly to output (no OR gate needed, but keep for consistency) */}
+      {/* For Moore: AND(Z1) directly to Z output (no OR gate) */}
       {modelType === 'moore' && (
         <Wire pts={[
           { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
-          { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
-          { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
-        ]} color={WHITE} w={1.5} />
+          { x: SVG_W - 15, y: AZ1.y + GATE_PIN_OUT },
+        ]} color={CYAN} w={1.8} />
       )}
 
-      {/* OR(Z) output → Z label */}
-      <Wire pts={[
-        { x: orOutX(OZ.x), y: OZ.y + GATE_PIN_OUT },
-        { x: SVG_W - 15, y: OZ.y + GATE_PIN_OUT },
-      ]} color={CYAN} w={1.8} />
-      <SigLabel x={SVG_W - 12} y={OZ.y + GATE_PIN_OUT + 4} text="Z" color={CYAN} size={14} />
+      {/* Z label */}
+      <SigLabel x={SVG_W - 12} y={modelType === 'moore' ? AZ1.y + GATE_PIN_OUT + 4 : OZ.y + GATE_PIN_OUT + 4} text="Z" color={CYAN} size={14} />
 
       {/* ══════════════════════════════════════════════
           DRAW GATES & FFs ON TOP OF WIRES
@@ -406,8 +417,12 @@ const JKCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, m
       <OrGate  x={OK2.x} y={OK2.y} />
       <NotGate x={NQ1.x} y={NQ1.y} />
       <AndGate x={AZ1.x} y={AZ1.y} />
-      {modelType === 'mealy' && <AndGate x={AZ2.x} y={AZ2.y} />}
-      <OrGate  x={OZ.x}  y={OZ.y}  />
+      {modelType === 'mealy' && (
+        <>
+          <AndGate x={AZ2.x} y={AZ2.y} />
+          <OrGate  x={OZ.x}  y={OZ.y}  />
+        </>
+      )}
 
       <FlipFlopBlock x={FF1.x} y={FF1.y} width={FF1.w} height={FF1.h} type="JK" label="FF₁" />
       <FlipFlopBlock x={FF2.x} y={FF2.y} width={FF2.w} height={FF2.h} type="JK" label="FF₂" />
@@ -613,29 +628,36 @@ const TCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, mo
             { x: OZ.x + 4, y: AZ2.y + GATE_PIN_OUT },
             { x: OZ.x + 4, y: OZ.y + GATE_PIN_BOT + 3 },
           ]} color={WHITE} w={1.5} />
+
+          {/* OR(Z) output → Z label (Mealy only) */}
+          <Wire pts={[
+            { x: orOutX(OZ.x), y: OZ.y + GATE_PIN_OUT },
+            { x: SVG_W - 15, y: OZ.y + GATE_PIN_OUT },
+          ]} color={CYAN} w={1.8} />
         </>
       )}
 
+      {/* For Moore: AND(Z1) directly to Z output (no OR gate) */}
       {modelType === 'moore' && (
         <Wire pts={[
           { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
-          { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
-          { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
-        ]} color={WHITE} w={1.5} />
+          { x: SVG_W - 15, y: AZ1.y + GATE_PIN_OUT },
+        ]} color={CYAN} w={1.8} />
       )}
 
-      <Wire pts={[
-        { x: orOutX(OZ.x), y: OZ.y + GATE_PIN_OUT },
-        { x: SVG_W - 15, y: OZ.y + GATE_PIN_OUT },
-      ]} color={CYAN} w={1.8} />
-      <SigLabel x={SVG_W - 12} y={OZ.y + GATE_PIN_OUT + 4} text="Z" color={CYAN} size={14} />
+      {/* Z label */}
+      <SigLabel x={SVG_W - 12} y={modelType === 'moore' ? AZ1.y + GATE_PIN_OUT + 4 : OZ.y + GATE_PIN_OUT + 4} text="Z" color={CYAN} size={14} />
 
       {/* Gates & FFs */}
       <XorGate x={XT1.x} y={XT1.y} />
       <XorGate x={XT2.x} y={XT2.y} />
       <AndGate x={AZ1.x} y={AZ1.y} />
-      {modelType === 'mealy' && <AndGate x={AZ2.x} y={AZ2.y} />}
-      <OrGate  x={OZ.x}  y={OZ.y}  />
+      {modelType === 'mealy' && (
+        <>
+          <AndGate x={AZ2.x} y={AZ2.y} />
+          <OrGate  x={OZ.x}  y={OZ.y}  />
+        </>
+      )}
       <FlipFlopBlock x={FF1.x} y={FF1.y} width={FF1.w} height={FF1.h} type="T" label="FF₁" />
       <FlipFlopBlock x={FF2.x} y={FF2.y} width={FF2.w} height={FF2.h} type="T" label="FF₂" />
 
