@@ -132,18 +132,30 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       canvas.height = svgHeight * dpi;
       ctx.scale(dpi, dpi);
 
+      // Fill background with dark color first
+      ctx.fillStyle = '#030712';
+      ctx.fillRect(0, 0, svgWidth, svgHeight);
+
+      // Clone SVG and ensure it has proper viewBox
+      const svgClone = svg.cloneNode(true) as SVGSVGElement;
+      svgClone.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+      svgClone.setAttribute('width', String(svgWidth));
+      svgClone.setAttribute('height', String(svgHeight));
+
+      // Add styles to SVG
+      const style = document.createElement('style');
+      style.textContent = 'text { font-family: monospace; }';
+      svgClone.insertBefore(style, svgClone.firstChild);
+
       // Get SVG as string
-      const svgString = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+      const svgString = new XMLSerializer().serializeToString(svgClone);
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
 
       // Create image and draw to canvas
       const img = new Image();
       img.onload = () => {
-        // Fill background with dark color to match theme
-        ctx.fillStyle = '#030712';
-        ctx.fillRect(0, 0, svgWidth, svgHeight);
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
 
         // Download
         canvas.toBlob((blob) => {
@@ -158,6 +170,10 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
 
         URL.revokeObjectURL(url);
       };
+      img.onerror = () => {
+        console.error('Failed to load SVG image');
+        URL.revokeObjectURL(url);
+      };
       img.src = url;
     } catch (error) {
       console.error('Error exporting PNG:', error);
@@ -170,8 +186,30 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
 
     try {
       const svg = svgRef.current;
-      const svgString = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+
+      // Clone SVG to avoid modifying the original
+      const svgClone = svg.cloneNode(true) as SVGSVGElement;
+
+      // Ensure proper viewBox and dimensions
+      svgClone.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+      svgClone.setAttribute('width', String(svgWidth));
+      svgClone.setAttribute('height', String(svgHeight));
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+      // Add background rectangle
+      const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bgRect.setAttribute('width', String(svgWidth));
+      bgRect.setAttribute('height', String(svgHeight));
+      bgRect.setAttribute('fill', '#030712');
+      svgClone.insertBefore(bgRect, svgClone.firstChild);
+
+      // Add style element for proper text rendering
+      const style = document.createElement('style');
+      style.textContent = 'text { font-family: monospace; }';
+      svgClone.insertBefore(style, svgClone.firstChild);
+
+      const svgString = new XMLSerializer().serializeToString(svgClone);
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
 
       const link = document.createElement('a');
@@ -183,7 +221,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     } catch (error) {
       console.error('Error exporting SVG:', error);
     }
-  }, [fileName]);
+  }, [fileName, svgWidth, svgHeight]);
 
   return (
     <div
