@@ -22,22 +22,6 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-  // Calculate pan bounds dynamically based on zoom level
-  const calculatePanBounds = useCallback((zoomLevel: number) => {
-    const scale = zoomLevel / 100;
-    const containerWidth = svgContainerRef.current?.clientWidth || 500;
-    const containerHeight = svgContainerRef.current?.clientHeight || 500;
-    
-    const scaledWidth = svgWidth * scale;
-    const scaledHeight = svgHeight * scale;
-    
-    // Allow panning to show all edges of the schematic
-    const maxPanX = Math.max(0, (scaledWidth - containerWidth) / 2);
-    const maxPanY = Math.max(0, (scaledHeight - containerHeight) / 2);
-    
-    return { maxPanX, maxPanY };
-  }, [svgWidth, svgHeight]);
-
   // Reset view to original state
   const handleResetView = useCallback(() => {
     setZoom(100);
@@ -67,15 +51,23 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     []
   );
 
-  // Pan start
+  // Pan start - prevent text selection and default behavior
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button === 0) { // Left mouse button
+      // Prevent default text selection
+      e.preventDefault();
+      
       setIsPanning(true);
       setPanStart({ x: e.clientX - panX, y: e.clientY - panY });
+      
+      // Disable text selection globally during panning
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+      document.body.style.cursor = 'grabbing';
     }
   }, [panX, panY]);
 
-  // Pan move with improved bounds calculation
+  // Pan move with generous bounds
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!isPanning) return;
@@ -83,20 +75,26 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       const newPanX = e.clientX - panStart.x;
       const newPanY = e.clientY - panStart.y;
 
-      // Get dynamic bounds based on current zoom
-      const { maxPanX, maxPanY } = calculatePanBounds(zoom);
-
-      // Constrain pan within bounds
-      setPanX(Math.max(-maxPanX, Math.min(maxPanX, newPanX)));
-      setPanY(Math.max(-maxPanY, Math.min(maxPanY, newPanY)));
+      // Very generous bounds - allow panning far beyond the schematic edges
+      // This lets users position any part of the schematic wherever they want
+      const maxPan = 500;
+      setPanX(Math.max(-maxPan, Math.min(maxPan, newPanX)));
+      setPanY(Math.max(-maxPan, Math.min(maxPan, newPanY)));
     },
-    [isPanning, panStart, zoom, calculatePanBounds]
+    [isPanning, panStart]
   );
 
-  // Pan end
+  // Pan end - restore text selection
   const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+    if (isPanning) {
+      setIsPanning(false);
+      
+      // Restore text selection
+      document.body.style.userSelect = 'auto';
+      document.body.style.webkitUserSelect = 'auto';
+      document.body.style.cursor = 'auto';
+    }
+  }, [isPanning]);
 
   // Add wheel listener
   useEffect(() => {
@@ -106,6 +104,15 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.userSelect = 'auto';
+      document.body.style.webkitUserSelect = 'auto';
+      document.body.style.cursor = 'auto';
+    };
+  }, []);
 
   // Export as PNG
   const handleExportPNG = useCallback(async () => {
@@ -181,7 +188,11 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     <div
       ref={svgContainerRef}
       className="relative bg-gray-950 rounded-lg overflow-hidden border border-gray-800"
-      style={{ height: '500px', userSelect: 'none' }}
+      style={{ 
+        height: '500px',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -196,6 +207,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
           transition: isPanning ? 'none' : 'transform 0.1s ease-out',
           cursor: isPanning ? 'grabbing' : 'grab',
           userSelect: 'none',
+          WebkitUserSelect: 'none',
         }}
       >
         <svg
@@ -206,6 +218,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
             height: svgHeight,
             pointerEvents: 'none',
             userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
           {children}
@@ -214,8 +227,11 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
 
       {/* Control Panel - Top Right */}
       <div 
-        className="absolute top-3 right-3 flex flex-col gap-2 bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-lg p-2 shadow-lg"
-        style={{ userSelect: 'none' }}
+        className="absolute top-3 right-3 flex flex-col gap-2 bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-lg p-2 shadow-lg pointer-events-auto"
+        style={{ 
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+        }}
       >
         {/* Zoom Controls */}
         <div className="flex gap-1">
@@ -284,8 +300,11 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       {/* Pan Hint */}
       {zoom > 100 && (
         <div 
-          className="absolute bottom-3 left-3 text-xs text-gray-600 bg-gray-900/80 px-2 py-1 rounded border border-gray-700"
-          style={{ userSelect: 'none' }}
+          className="absolute bottom-3 left-3 text-xs text-gray-600 bg-gray-900/80 px-2 py-1 rounded border border-gray-700 pointer-events-none"
+          style={{ 
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
         >
           Drag to pan
         </div>
