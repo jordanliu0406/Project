@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { FlipFlopType, KMap } from '../types';
+import { FlipFlopType, KMap, ModelType } from '../types';
 import { Cpu } from 'lucide-react';
 import SchematicViewer from './SchematicViewer';
 import {
@@ -12,6 +12,7 @@ import {
 
 interface Props {
   flipFlopType: FlipFlopType;
+  modelType: ModelType;
   hasData: boolean;
   kmaps: KMap[];
 }
@@ -51,31 +52,12 @@ const SchematicGrid = React.memo(function SchematicGrid({
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   JK FLIP-FLOP CIRCUIT
+   JK FLIP-FLOP CIRCUIT (with Moore/Mealy Model Support)
    ─────────────────────────────────────────────────────────────────────────────
-   Equations (verified against K-Maps):
-     J1 = X' · Q2      ← AND gate: inputs = [X', Q2]
-     K1 = X' · Q1      ← AND gate: inputs = [X', Q1]
-     J2 = X  ⊕ Q1     ← XOR gate: inputs = [X,  Q1]
-     K2 = X' + Q1'     ← OR  gate: inputs = [X', NOT(Q1)]
-     Z  = X·Q2 + Q1·Q2 ← two ANDs feeding one OR
-
-   Layout columns (left → right):
-     Col A  x≈35      NOT(X)  generates X'
-     Col B  x≈140     AND(J1), AND(K1)       driven by {X', Q2/Q1}
-     Col C  x≈310     FF1 block
-     Col D  x≈160     XOR(J2), OR(K2)        between the two FFs (shifted left so wires don't overlap)
-              x≈100    NOT(Q1)                below Col A
-     Col E  x≈490     FF2 block
-     Col F  x≈640     AND(Z1=X·Q2), AND(Z2=Q1·Q2)  then OR(Z)
-     Col G  x≈740     OR(Z) output
-
-   Horizontal buses:
-     X  bus  y=28     (cyan, entire width)
-     X' bus  x=122    vertical (amber, from NOT(X) output downward)
-     Q2 bus  x=600    vertical (white) from FF2.Q, goes UP to top channel y=14 then routes left
-     Q1 bus  x=420    vertical (white) from FF1.Q, goes DOWN to bot channel y=390 then routes left
-   ──────────────────────────────────────────────────────────────────────────────*/
+   
+   Moore Model: Z depends only on state (Q1, Q2)
+   Mealy Model: Z depends on state (Q1, Q2) AND input (X)
+──────────────────────────────────────────────────────────────────────────────*/
 
 const CYAN   = '#22d3ee';
 const AMBER  = '#fbbf24';
@@ -88,13 +70,12 @@ const gOutX = (gx: number) => gx + GATE_W;
 /* OR output is slightly inside the pointed tip – use GATE_W-2 */
 const orOutX = (gx: number) => gx + GATE_W - 2;
 
-/* ──────────────────────────────────────────────── */
-const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
+const JKCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, modelType }) => {
   /* ── geometry constants ── */
   const SVG_W = 880, SVG_H = 460;
 
   /* NOT(X) gate */
-  const NX = { x: 30, y: 30 };   // top-left of gate; input pin at (NX.x, NX.y+NOT_PIN_IN)
+  const NX = { x: 30, y: 30 };
 
   /* AND gates for J1, K1 */
   const AJ1 = { x: 140, y: 105 };
@@ -106,15 +87,15 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   /* XOR(J2), OR(K2), NOT(Q1) */
   const XJ2 = { x: 160, y: 295 };
   const OK2 = { x: 160, y: 373 };
-  const NQ1 = { x: 65, y: 370 };  // NOT(Q1)
+  const NQ1 = { x: 65, y: 370 };
 
   /* FF2 */
   const FF2 = { x: 490, y: 90, w: 100, h: 180 };
 
-  /* Z output gates */
-  const AZ1 = { x: 680, y: 115 };  // AND: X · Q2
-  const AZ2 = { x: 680, y: 185 };  // AND: Q1 · Q2
-  const OZ  = { x: 762, y: 138 };  // OR combines Z1 and Z2
+  /* Z output gates - layout depends on model type */
+  const AZ1 = { x: 680, y: 115 };  // AND for Z
+  const AZ2 = { x: 680, y: 185 };  // AND for Z (Mealy only)
+  const OZ  = { x: 762, y: 138 };  // OR combines Z inputs
 
   /* FF1 pin Y positions */
   const ff1Jy   = FF1.y + ffPinY('JK', 'J',   FF1.h);
@@ -131,12 +112,12 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   const ff2QPy  = FF2.y + ffPinY('JK', "Q'",  FF2.h);
 
   /* Bus rail coordinates */
-  const xBusY  = 14;    // X  horizontal bus (cyan) near top
-  const xpBusX = 122;   // X' vertical bus (amber)
-  const q2BusX = 606;   // Q2 vertical bus right of FF2
-  const q2TopY = 10;    // Q2 top channel
-  const q1BusX = 418;   // Q1 vertical bus right of FF1
-  const q1BotY = 412;   // Q1 bottom channel
+  const xBusY  = 14;
+  const xpBusX = 122;
+  const q2BusX = 606;
+  const q2TopY = 10;
+  const q1BusX = 418;
+  const q1BotY = 412;
 
   return (
     <>
@@ -166,12 +147,16 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={CYAN} w={1.6} />
       <Dot x={358} y={xBusY} color={CYAN} />
 
-      {/* X  → AND(Z1) top input */}
-      <Wire pts={[
-        { x: AZ1.x + 4 + GATE_PIN_TOP, y: xBusY },
-        { x: AZ1.x + 4 + GATE_PIN_TOP, y: AZ1.y + GATE_PIN_TOP },
-      ]} color={CYAN} w={1.6} />
-      <Dot x={AZ1.x + 4 + GATE_PIN_TOP} y={xBusY} color={CYAN} />
+      {/* X  → AND(Z1) top input (ONLY for Mealy model) */}
+      {modelType === 'mealy' && (
+        <>
+          <Wire pts={[
+            { x: AZ1.x + 4 + GATE_PIN_TOP, y: xBusY },
+            { x: AZ1.x + 4 + GATE_PIN_TOP, y: AZ1.y + GATE_PIN_TOP },
+          ]} color={CYAN} w={1.6} />
+          <Dot x={AZ1.x + 4 + GATE_PIN_TOP} y={xBusY} color={CYAN} />
+        </>
+      )}
 
       {/* ── X' vertical bus (amber) ── */}
       {/* NOT(X) output → xpBusX rail */}
@@ -204,21 +189,18 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <Dot x={xpBusX} y={OK2.y + GATE_PIN_TOP + 3} color={AMBER} />
 
       {/* ── Q2 bus (white) – from FF2.Q right, up to top channel, then left ── */}
-      {/* FF2.Q → Q2 bus x */}
       <Wire pts={[
         { x: FF2.x + FF2.w, y: ff2Qy },
         { x: q2BusX, y: ff2Qy },
       ]} color={WHITE} w={1.8} />
       <SigLabel x={q2BusX + 4} y={ff2Qy + 4} text="Q₂" color={WHITE} size={10} />
 
-      {/* Q2 up to top channel */}
       <Wire pts={[
         { x: q2BusX, y: ff2Qy },
         { x: q2BusX, y: q2TopY },
       ]} color={WHITE} w={1.5} />
       <Dot x={q2BusX} y={ff2Qy} color={WHITE} />
 
-      {/* top channel: Q2 routes left to AND(J1) bot, AND(Z1) bot, AND(Z2) bot */}
       <Wire pts={[
         { x: q2BusX, y: q2TopY },
         { x: 152, y: q2TopY },
@@ -240,12 +222,16 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={WHITE} w={1.5} />
       <Dot x={AZ1.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
 
-      {/* Q2 also drops → AND(Z2) bot (slightly different x to avoid overlap) */}
-      <Wire pts={[
-        { x: AZ2.x + 4 + GATE_PIN_BOT, y: q2TopY },
-        { x: AZ2.x + 4 + GATE_PIN_BOT, y: AZ2.y + GATE_PIN_BOT },
-      ]} color={WHITE} w={1.5} />
-      <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
+      {/* Q2 also drops → AND(Z2) bot (ONLY for Mealy model) */}
+      {modelType === 'mealy' && (
+        <>
+          <Wire pts={[
+            { x: AZ2.x + 4 + GATE_PIN_BOT, y: q2TopY },
+            { x: AZ2.x + 4 + GATE_PIN_BOT, y: AZ2.y + GATE_PIN_BOT },
+          ]} color={WHITE} w={1.5} />
+          <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
+        </>
+      )}
 
       {/* ── Q1 bus (white) – from FF1.Q right, down to bot channel, then left ── */}
       <Wire pts={[
@@ -254,14 +240,12 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={WHITE} w={1.8} />
       <SigLabel x={q1BusX + 4} y={ff1Qy + 4} text="Q₁" color={WHITE} size={10} />
 
-      {/* Q1 down to bot channel */}
       <Wire pts={[
         { x: q1BusX, y: ff1Qy },
         { x: q1BusX, y: q1BotY },
       ]} color={WHITE} w={1.5} />
       <Dot x={q1BusX} y={ff1Qy} color={WHITE} />
 
-      {/* bot channel: Q1 routes left */}
       <Wire pts={[
         { x: q1BusX, y: q1BotY },
         { x: 75, y: q1BotY },
@@ -292,13 +276,15 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={WHITE} w={1.5} />
       <Dot x={75} y={q1BotY} color={WHITE} />
 
-      {/* Q1 also feeds AND(Z2) top (offset lane x = q1BusX+6) */}
-      <Wire pts={[
-        { x: q1BusX + 6, y: ff1Qy },
-        { x: q1BusX + 6, y: q2TopY + 6 },   /* use a slightly lower top channel lane */
-        { x: AZ2.x + 4 + GATE_PIN_TOP, y: q2TopY + 6 },
-        { x: AZ2.x + 4 + GATE_PIN_TOP, y: AZ2.y + GATE_PIN_TOP },
-      ]} color={WHITE} w={1.5} />
+      {/* Q1 also feeds AND(Z2) top (offset lane x = q1BusX+6) - ONLY for Mealy */}
+      {modelType === 'mealy' && (
+        <Wire pts={[
+          { x: q1BusX + 6, y: ff1Qy },
+          { x: q1BusX + 6, y: q2TopY + 6 },
+          { x: AZ2.x + 4 + GATE_PIN_TOP, y: q2TopY + 6 },
+          { x: AZ2.x + 4 + GATE_PIN_TOP, y: AZ2.y + GATE_PIN_TOP },
+        ]} color={WHITE} w={1.5} />
+      )}
 
       {/* ── NOT(Q1) output → OR(K2) bot pin (amber, Q1') ── */}
       <Wire pts={[
@@ -374,21 +360,34 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <SigLabel x={FF2.x + FF2.w + 16} y={ff2QPy + 3} text="Q₂'" color={DIMW} size={9} />
 
       {/* ══════════════════════════════════════════════
-          Z output network
+          Z output network (model-dependent)
           ══════════════════════════════════════════════ */}
-      {/* AND(Z1) → OR(Z) top */}
-      <Wire pts={[
-        { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
-      ]} color={WHITE} w={1.5} />
+      
+      {/* For Mealy: AND(Z1) → OR(Z) top, AND(Z2) → OR(Z) bot */}
+      {modelType === 'mealy' && (
+        <>
+          <Wire pts={[
+            { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
+          ]} color={WHITE} w={1.5} />
 
-      {/* AND(Z2) → OR(Z) bot */}
-      <Wire pts={[
-        { x: gOutX(AZ2.x), y: AZ2.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: AZ2.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: OZ.y + GATE_PIN_BOT + 3 },
-      ]} color={WHITE} w={1.5} />
+          <Wire pts={[
+            { x: gOutX(AZ2.x), y: AZ2.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: AZ2.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: OZ.y + GATE_PIN_BOT + 3 },
+          ]} color={WHITE} w={1.5} />
+        </>
+      )}
+
+      {/* For Moore: AND(Z1) directly to output (no OR gate needed, but keep for consistency) */}
+      {modelType === 'moore' && (
+        <Wire pts={[
+          { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
+          { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
+          { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
+        ]} color={WHITE} w={1.5} />
+      )}
 
       {/* OR(Z) output → Z label */}
       <Wire pts={[
@@ -407,7 +406,7 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <OrGate  x={OK2.x} y={OK2.y} />
       <NotGate x={NQ1.x} y={NQ1.y} />
       <AndGate x={AZ1.x} y={AZ1.y} />
-      <AndGate x={AZ2.x} y={AZ2.y} />
+      {modelType === 'mealy' && <AndGate x={AZ2.x} y={AZ2.y} />}
       <OrGate  x={OZ.x}  y={OZ.y}  />
 
       <FlipFlopBlock x={FF1.x} y={FF1.y} width={FF1.w} height={FF1.h} type="JK" label="FF₁" />
@@ -423,7 +422,8 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <EqBadge
         x={AZ1.x - 10}
         y={AZ1.y - 15}
-        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 'X·Q₂+Q₁·Q₂')}
+        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 
+          modelType === 'moore' ? 'Q₁·Q₂' : 'X·Q₂+Q₁·Q₂')}
       />
 
       {/* Legend */}
@@ -433,28 +433,23 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   T FLIP-FLOP CIRCUIT
-   ─────────────────────────────────────────────────────────────────────────────
-   Equations:
-     T1 = X · Q2' + X' · Q2  =  X ⊕ Q2
-     T2 = X ⊕ Q1
-     Z  = Q1·Q2 + X·Q2
+   T FLIP-FLOP CIRCUIT (with Moore/Mealy Model Support)
 ──────────────────────────────────────────────────────────────────────────────*/
 
-const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
+const TCircuit: React.FC<{ kmaps: KMap[]; modelType: ModelType }> = ({ kmaps, modelType }) => {
   const SVG_W = 800, SVG_H = 390;
 
   /* XOR gates */
-  const XT1 = { x: 140, y: 110 };  // T1 = X ⊕ Q2
-  const XT2 = { x: 140, y: 210 };  // T2 = X ⊕ Q1
+  const XT1 = { x: 140, y: 110 };
+  const XT2 = { x: 140, y: 210 };
 
   /* Flip-flops */
   const FF1 = { x: 330, y: 90, w: 100, h: 160 };
   const FF2 = { x: 490, y: 90, w: 100, h: 160 };
 
   /* Z output gates */
-  const AZ1 = { x: 640, y: 110 };  // Q1·Q2
-  const AZ2 = { x: 640, y: 185 };  // X·Q2
+  const AZ1 = { x: 640, y: 110 };
+  const AZ2 = { x: 640, y: 185 };
   const OZ  = { x: 722, y: 135 };
 
   /* FF1 pin Y */
@@ -491,12 +486,16 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={CYAN} w={1.6} />
       <Dot x={243} y={xBusY} color={CYAN} />
 
-      {/* X → AND(Z2) top */}
-      <Wire pts={[
-        { x: AZ2.x + 4 + GATE_PIN_TOP, y: xBusY },
-        { x: AZ2.x + 4 + GATE_PIN_TOP, y: AZ2.y + GATE_PIN_TOP },
-      ]} color={CYAN} w={1.6} />
-      <Dot x={AZ2.x + 4 + GATE_PIN_TOP} y={xBusY} color={CYAN} />
+      {/* X → AND(Z2) top (ONLY for Mealy) */}
+      {modelType === 'mealy' && (
+        <>
+          <Wire pts={[
+            { x: AZ2.x + 4 + GATE_PIN_TOP, y: xBusY },
+            { x: AZ2.x + 4 + GATE_PIN_TOP, y: AZ2.y + GATE_PIN_TOP },
+          ]} color={CYAN} w={1.6} />
+          <Dot x={AZ2.x + 4 + GATE_PIN_TOP} y={xBusY} color={CYAN} />
+        </>
+      )}
 
       {/* Q2 bus: FF2.Q → right, up to top channel, then left */}
       <Wire pts={[
@@ -524,12 +523,16 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={WHITE} w={1.5} />
       <Dot x={AZ1.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
 
-      {/* Q2 top → AND(Z2) bot */}
-      <Wire pts={[
-        { x: AZ2.x + 4 + GATE_PIN_BOT, y: q2TopY },
-        { x: AZ2.x + 4 + GATE_PIN_BOT, y: AZ2.y + GATE_PIN_BOT },
-      ]} color={WHITE} w={1.5} />
-      <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
+      {/* Q2 top → AND(Z2) bot (ONLY for Mealy) */}
+      {modelType === 'mealy' && (
+        <>
+          <Wire pts={[
+            { x: AZ2.x + 4 + GATE_PIN_BOT, y: q2TopY },
+            { x: AZ2.x + 4 + GATE_PIN_BOT, y: AZ2.y + GATE_PIN_BOT },
+          ]} color={WHITE} w={1.5} />
+          <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
+        </>
+      )}
 
       {/* Q1 bus: FF1.Q → right, down to bot channel, then left */}
       <Wire pts={[
@@ -597,17 +600,30 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <Wire pts={[{ x: FF2.x + FF2.w, y: ff2QPy }, { x: FF2.x + FF2.w + 14, y: ff2QPy }]} color={DIMW} w={1.4} />
       <SigLabel x={FF2.x + FF2.w + 16} y={ff2QPy + 3} text="Q₂'" color={DIMW} size={9} />
 
-      {/* Z network */}
-      <Wire pts={[
-        { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
-      ]} color={WHITE} w={1.5} />
-      <Wire pts={[
-        { x: gOutX(AZ2.x), y: AZ2.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: AZ2.y + GATE_PIN_OUT },
-        { x: OZ.x + 4, y: OZ.y + GATE_PIN_BOT + 3 },
-      ]} color={WHITE} w={1.5} />
+      {/* Z network (model-dependent) */}
+      {modelType === 'mealy' && (
+        <>
+          <Wire pts={[
+            { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
+          ]} color={WHITE} w={1.5} />
+          <Wire pts={[
+            { x: gOutX(AZ2.x), y: AZ2.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: AZ2.y + GATE_PIN_OUT },
+            { x: OZ.x + 4, y: OZ.y + GATE_PIN_BOT + 3 },
+          ]} color={WHITE} w={1.5} />
+        </>
+      )}
+
+      {modelType === 'moore' && (
+        <Wire pts={[
+          { x: gOutX(AZ1.x), y: AZ1.y + GATE_PIN_OUT },
+          { x: OZ.x + 4, y: AZ1.y + GATE_PIN_OUT },
+          { x: OZ.x + 4, y: OZ.y + GATE_PIN_TOP + 3 },
+        ]} color={WHITE} w={1.5} />
+      )}
+
       <Wire pts={[
         { x: orOutX(OZ.x), y: OZ.y + GATE_PIN_OUT },
         { x: SVG_W - 15, y: OZ.y + GATE_PIN_OUT },
@@ -618,7 +634,7 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <XorGate x={XT1.x} y={XT1.y} />
       <XorGate x={XT2.x} y={XT2.y} />
       <AndGate x={AZ1.x} y={AZ1.y} />
-      <AndGate x={AZ2.x} y={AZ2.y} />
+      {modelType === 'mealy' && <AndGate x={AZ2.x} y={AZ2.y} />}
       <OrGate  x={OZ.x}  y={OZ.y}  />
       <FlipFlopBlock x={FF1.x} y={FF1.y} width={FF1.w} height={FF1.h} type="T" label="FF₁" />
       <FlipFlopBlock x={FF2.x} y={FF2.y} width={FF2.w} height={FF2.h} type="T" label="FF₂" />
@@ -629,7 +645,8 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <EqBadge
         x={AZ1.x - 10}
         y={AZ1.y - 15}
-        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 'Q₁·Q₂+X·Q₂')}
+        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 
+          modelType === 'moore' ? 'Q₁·Q₂' : 'Q₁·Q₂+X·Q₂')}
       />
 
       <Legend x={SVG_W - 246} y={SVG_H - 62} />
@@ -672,11 +689,12 @@ const Legend: React.FC<{ x: number; y: number }> = ({ x, y }) => (
 /* ─────────────────────────────────────────────────────────────────────────────
    MAIN EXPORT
 ──────────────────────────────────────────────────────────────────────────────*/
-const CircuitSchematic: React.FC<Props> = ({ flipFlopType, hasData, kmaps }) => {
+const CircuitSchematic: React.FC<Props> = ({ flipFlopType, modelType, hasData, kmaps }) => {
   const schematicNote = useMemo(() => {
     if (kmaps.length === 0) return null;
-    return 'Gate layout is illustrative. Equation badges reflect your minimized design.';
-  }, [kmaps.length]);
+    const modelLabel = modelType === 'moore' ? 'Moore' : 'Mealy';
+    return `${modelLabel} Model · Gate layout is illustrative · Equation badges reflect your minimized design`;
+  }, [kmaps.length, modelType]);
 
   const svgDimensions = flipFlopType === 'jk' 
     ? { width: 880, height: 460 }
@@ -699,19 +717,24 @@ const CircuitSchematic: React.FC<Props> = ({ flipFlopType, hasData, kmaps }) => 
                   {flipFlopType === 'jk' ? 'JK Flip-Flop' : 'T Flip-Flop'} Circuit
                 </span>
               </div>
-              <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
-                MIL-STD-806B
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
+                  {modelType.toUpperCase()} Model
+                </span>
+                <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
+                  MIL-STD-806B
+                </span>
+              </div>
             </div>
             <SchematicViewer 
               svgWidth={svgDimensions.width}
               svgHeight={svgDimensions.height}
-              fileName={`${flipFlopType}-flipflop-circuit`}
+              fileName={`${modelType}-${flipFlopType}-flipflop-circuit`}
             >
               {flipFlopType === 'jk' ? (
-                <JKCircuit kmaps={kmaps} />
+                <JKCircuit kmaps={kmaps} modelType={modelType} />
               ) : (
-                <TCircuit kmaps={kmaps} />
+                <TCircuit kmaps={kmaps} modelType={modelType} />
               )}
             </SchematicViewer>
             <p className="text-xs text-gray-700 text-center mt-2 italic">

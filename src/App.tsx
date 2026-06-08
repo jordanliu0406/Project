@@ -139,6 +139,7 @@ export default function App() {
               onTabChange={setActiveTab}
               kmaps={kmaps}
               flipFlopType={design.flipFlopType}
+              modelType={design.modelType}
               hasGenerated={hasGenerated}
               isLoading={isLoading}
               isStale={isStale}

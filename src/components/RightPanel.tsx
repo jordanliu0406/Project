@@ -1,5 +1,5 @@
 import React from 'react';
-import { KMap, FlipFlopType, OutputTab } from '../types';
+import { KMap, FlipFlopType, OutputTab, ModelType } from '../types';
 import KMapSection from './KMapSection';
 import EquationsPanel from './EquationsPanel';
 import CircuitSchematic from './CircuitSchematic';
@@ -10,6 +10,7 @@ interface Props {
   onTabChange: (t: OutputTab) => void;
   kmaps: KMap[];
   flipFlopType: FlipFlopType;
+  modelType: ModelType;
   hasGenerated: boolean;
   isLoading: boolean;
   isStale?: boolean;
@@ -41,6 +42,7 @@ const RightPanel: React.FC<Props> = ({
   onTabChange,
   kmaps,
   flipFlopType,
+  modelType,
   hasGenerated,
   isLoading,
   isStale = false,
@@ -94,6 +96,7 @@ const RightPanel: React.FC<Props> = ({
         ) : (
           <CircuitSchematic
             flipFlopType={flipFlopType}
+            modelType={modelType}
             hasData={hasGenerated}
             kmaps={kmaps}
           />
