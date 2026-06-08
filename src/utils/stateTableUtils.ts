@@ -9,11 +9,19 @@ import {
 /** Unique states in first-seen order (present state rows, then next-state discoveries). */
 export function collectStateOrder(rows: StateRow[]): string[] {
   const stateOrder: string[] = [];
+  // First pass: Collect all unique present states in their order of appearance
   for (const row of rows) {
     const present = row.presentState.trim();
+    if (present && !stateOrder.includes(present)) {
+      stateOrder.push(present);
+    }
+  }
+  // Second pass: Collect any next states that haven't been defined as present states yet
+  for (const row of rows) {
     const next = row.nextState.trim();
-    if (present && !stateOrder.includes(present)) stateOrder.push(present);
-    if (next && !stateOrder.includes(next)) stateOrder.push(next);
+    if (next && !stateOrder.includes(next)) {
+      stateOrder.push(next);
+    }
   }
   return stateOrder;
 }
