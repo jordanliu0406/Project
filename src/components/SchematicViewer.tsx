@@ -22,6 +22,22 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
+  // Calculate pan bounds dynamically based on zoom level
+  const calculatePanBounds = useCallback((zoomLevel: number) => {
+    const scale = zoomLevel / 100;
+    const containerWidth = svgContainerRef.current?.clientWidth || 500;
+    const containerHeight = svgContainerRef.current?.clientHeight || 500;
+    
+    const scaledWidth = svgWidth * scale;
+    const scaledHeight = svgHeight * scale;
+    
+    // Allow panning to show all edges of the schematic
+    const maxPanX = Math.max(0, (scaledWidth - containerWidth) / 2);
+    const maxPanY = Math.max(0, (scaledHeight - containerHeight) / 2);
+    
+    return { maxPanX, maxPanY };
+  }, [svgWidth, svgHeight]);
+
   // Reset view to original state
   const handleResetView = useCallback(() => {
     setZoom(100);
@@ -59,7 +75,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     }
   }, [panX, panY]);
 
-  // Pan move
+  // Pan move with improved bounds calculation
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!isPanning) return;
@@ -67,13 +83,14 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       const newPanX = e.clientX - panStart.x;
       const newPanY = e.clientY - panStart.y;
 
-      // Keep pan within reasonable bounds
-      const maxPanX = 200;
-      const maxPanY = 200;
+      // Get dynamic bounds based on current zoom
+      const { maxPanX, maxPanY } = calculatePanBounds(zoom);
+
+      // Constrain pan within bounds
       setPanX(Math.max(-maxPanX, Math.min(maxPanX, newPanX)));
       setPanY(Math.max(-maxPanY, Math.min(maxPanY, newPanY)));
     },
-    [isPanning, panStart]
+    [isPanning, panStart, zoom, calculatePanBounds]
   );
 
   // Pan end
@@ -164,7 +181,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     <div
       ref={svgContainerRef}
       className="relative bg-gray-950 rounded-lg overflow-hidden border border-gray-800"
-      style={{ height: '500px' }}
+      style={{ height: '500px', userSelect: 'none' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -178,6 +195,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
           transformOrigin: 'center',
           transition: isPanning ? 'none' : 'transform 0.1s ease-out',
           cursor: isPanning ? 'grabbing' : 'grab',
+          userSelect: 'none',
         }}
       >
         <svg
@@ -187,6 +205,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
             width: svgWidth,
             height: svgHeight,
             pointerEvents: 'none',
+            userSelect: 'none',
           }}
         >
           {children}
@@ -194,7 +213,10 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       </div>
 
       {/* Control Panel - Top Right */}
-      <div className="absolute top-3 right-3 flex flex-col gap-2 bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-lg p-2 shadow-lg">
+      <div 
+        className="absolute top-3 right-3 flex flex-col gap-2 bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-lg p-2 shadow-lg"
+        style={{ userSelect: 'none' }}
+      >
         {/* Zoom Controls */}
         <div className="flex gap-1">
           <button
@@ -261,7 +283,10 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
 
       {/* Pan Hint */}
       {zoom > 100 && (
-        <div className="absolute bottom-3 left-3 text-xs text-gray-600 bg-gray-900/80 px-2 py-1 rounded border border-gray-700">
+        <div 
+          className="absolute bottom-3 left-3 text-xs text-gray-600 bg-gray-900/80 px-2 py-1 rounded border border-gray-700"
+          style={{ userSelect: 'none' }}
+        >
           Drag to pan
         </div>
       )}
