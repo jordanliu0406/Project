@@ -31,7 +31,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
 
   // Zoom in
   const handleZoomIn = useCallback(() => {
-    setZoom((prev) => Math.min(prev + 20, 300));
+    setZoom((prev) => Math.min(prev + 20, 220));
   }, []);
 
   // Zoom out
@@ -46,7 +46,7 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       
       e.preventDefault();
       const delta = e.deltaY > 0 ? -20 : 20;
-      setZoom((prev) => Math.max(50, Math.min(300, prev + delta)));
+      setZoom((prev) => Math.max(50, Math.min(220, prev + delta)));
     },
     []
   );
@@ -75,13 +75,14 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
       const newPanX = e.clientX - panStart.x;
       const newPanY = e.clientY - panStart.y;
 
-      // Very generous bounds - allow panning far beyond the schematic edges
-      // This lets users position any part of the schematic wherever they want
-      const maxPan = 500;
+      // Extreme pan bounds - allow users to move any part of the schematic to center
+      // Dynamically calculate based on zoom level to ensure full accessibility
+      const scale = zoom / 100;
+      const maxPan = Math.max(800, svgWidth * scale + 300);
       setPanX(Math.max(-maxPan, Math.min(maxPan, newPanX)));
       setPanY(Math.max(-maxPan, Math.min(maxPan, newPanY)));
     },
-    [isPanning, panStart]
+    [isPanning, panStart, zoom, svgWidth]
   );
 
   // Pan end - restore text selection
