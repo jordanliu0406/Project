@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { FlipFlopType, KMap } from '../types';
 import { Cpu } from 'lucide-react';
+import SchematicViewer from './SchematicViewer';
 import {
   AndGate, OrGate, XorGate, NotGate,
   FlipFlopBlock, ffPinY,
@@ -138,7 +139,7 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   const q1BotY = 412;   // Q1 bottom channel
 
   return (
-    <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full" style={{ maxHeight: 420 }} fill="none">
+    <>
       {/* ── background grid dots ── */}
       <SchematicGrid rows={15} cols={23} />
 
@@ -427,7 +428,7 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
 
       {/* Legend */}
       <Legend x={SVG_W - 246} y={SVG_H - 62} />
-    </svg>
+    </>
   );
 };
 
@@ -475,7 +476,7 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   const q1BotY  = 355;
 
   return (
-    <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full" style={{ maxHeight: 360 }} fill="none">
+    <>
       <SchematicGrid rows={13} cols={21} />
 
       {/* X bus */}
@@ -632,7 +633,7 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       />
 
       <Legend x={SVG_W - 246} y={SVG_H - 62} />
-    </svg>
+    </>
   );
 };
 
@@ -677,52 +678,60 @@ const CircuitSchematic: React.FC<Props> = ({ flipFlopType, hasData, kmaps }) => 
     return 'Gate layout is illustrative. Equation badges reflect your minimized design.';
   }, [kmaps.length]);
 
+  const svgDimensions = flipFlopType === 'jk' 
+    ? { width: 880, height: 460 }
+    : { width: 800, height: 390 };
+
   return (
-  <div className="space-y-4">
-    <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-      <span className="h-px flex-1 bg-gray-700" />
-      Circuit Schematic
-      <span className="h-px flex-1 bg-gray-700" />
-    </h3>
-    <div className="bg-gray-900/80 border border-gray-700 rounded-xl p-4">
-      {hasData ? (
-        <>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Cpu size={13} className="text-blue-400" />
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {flipFlopType === 'jk' ? 'JK Flip-Flop' : 'T Flip-Flop'} Circuit
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+        <span className="h-px flex-1 bg-gray-700" />
+        Circuit Schematic
+        <span className="h-px flex-1 bg-gray-700" />
+      </h3>
+      <div className="bg-gray-900/80 border border-gray-700 rounded-xl p-4">
+        {hasData ? (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Cpu size={13} className="text-blue-400" />
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {flipFlopType === 'jk' ? 'JK Flip-Flop' : 'T Flip-Flop'} Circuit
+                </span>
+              </div>
+              <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
+                MIL-STD-806B
               </span>
             </div>
-            <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
-              MIL-STD-806B
-            </span>
+            <SchematicViewer 
+              svgWidth={svgDimensions.width}
+              svgHeight={svgDimensions.height}
+              fileName={`${flipFlopType}-flipflop-circuit`}
+            >
+              {flipFlopType === 'jk' ? (
+                <JKCircuit kmaps={kmaps} />
+              ) : (
+                <TCircuit kmaps={kmaps} />
+              )}
+            </SchematicViewer>
+            <p className="text-xs text-gray-700 text-center mt-2 italic">
+              {schematicNote ??
+                'Distinctive-shape symbols · orthogonal routing · feedback paths'}
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center mb-4">
+              <Cpu size={26} className="text-gray-600" />
+            </div>
+            <p className="text-gray-500 text-sm font-medium">No circuit generated yet</p>
+            <p className="text-gray-600 text-xs mt-1">
+              Fill in the state table and click &quot;Generate &amp; Minimize&quot;
+            </p>
           </div>
-          <div className="bg-gray-950 rounded-lg p-3 overflow-x-auto">
-            {flipFlopType === 'jk' ? (
-              <JKCircuit kmaps={kmaps} />
-            ) : (
-              <TCircuit kmaps={kmaps} />
-            )}
-          </div>
-          <p className="text-xs text-gray-700 text-center mt-2 italic">
-            {schematicNote ??
-              'Distinctive-shape symbols · orthogonal routing · feedback paths'}
-          </p>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-14 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center mb-4">
-            <Cpu size={26} className="text-gray-600" />
-          </div>
-          <p className="text-gray-500 text-sm font-medium">No circuit generated yet</p>
-          <p className="text-gray-600 text-xs mt-1">
-            Fill in the state table and click &quot;Generate &amp; Minimize&quot;
-          </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  </div>
   );
 };
 
