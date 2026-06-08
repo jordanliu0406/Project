@@ -120,10 +120,10 @@ export function generateKMaps(
 
       if (flipFlopType === 'jk') {
         const { j, k } = jkExcitation(currentBit, nextBit);
-        ensureMap(excitationLabel('J', bit)).set(minterm, j);
-        ensureMap(excitationLabel('K', bit)).set(minterm, k);
+        ensureMap(excitationLabel('J', bit, numFF)).set(minterm, j);
+        ensureMap(excitationLabel('K', bit, numFF)).set(minterm, k);
       } else {
-        ensureMap(excitationLabel('T', bit)).set(minterm, tExcitation(currentBit, nextBit));
+        ensureMap(excitationLabel('T', bit, numFF)).set(minterm, tExcitation(currentBit, nextBit));
       }
     }
 
@@ -138,8 +138,8 @@ export function generateKMaps(
 
   for (let bit = numFF - 1; bit >= 0; bit -= 1) {
     if (flipFlopType === 'jk') {
-      const jLabel = excitationLabel('J', bit);
-      const kLabel = excitationLabel('K', bit);
+      const jLabel = excitationLabel('J', bit, numFF);
+      const kLabel = excitationLabel('K', bit, numFF);
       if (excitationMaps.has(jLabel)) {
         kmaps.push(buildKMapEntry(jLabel, excitationMaps.get(jLabel)!, numFF, inputNames));
       }
@@ -147,7 +147,7 @@ export function generateKMaps(
         kmaps.push(buildKMapEntry(kLabel, excitationMaps.get(kLabel)!, numFF, inputNames));
       }
     } else {
-      const tLabel = excitationLabel('T', bit);
+      const tLabel = excitationLabel('T', bit, numFF);
       if (excitationMaps.has(tLabel)) {
         kmaps.push(buildKMapEntry(tLabel, excitationMaps.get(tLabel)!, numFF, inputNames));
       }

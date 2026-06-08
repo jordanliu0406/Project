@@ -83,13 +83,13 @@ const StateTableEditor: React.FC<Props> = ({
               <thead>
                 <tr className="bg-gray-750 border-b border-gray-700">
                   <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                    Present State
+                    Current State (Q1,Q2)
                   </th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     Input ({inputVars.trim() || 'X'})
                   </th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                    Next State
+                    Next State (Q1+,Q2+)
                   </th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     {outputLabel}

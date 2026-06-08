@@ -9,12 +9,24 @@ export function toSubscript(index: number): string {
     .join('');
 }
 
-export function qVarName(bitIndex: number): string {
-  return `Q${toSubscript(bitIndex)}`;
+/**
+ * Display index for a state/FF bit: MSB → Q₁, next → Q₂, … (never Q₀).
+ * `bitIndex` 0 is LSB; `numFF` is the total flip-flop count.
+ */
+export function stateBitDisplayIndex(bitIndex: number, numFF: number): number {
+  return numFF - bitIndex;
 }
 
-export function excitationLabel(prefix: 'J' | 'K' | 'T', bitIndex: number): string {
-  return `${prefix}${toSubscript(bitIndex)}`;
+export function qVarName(bitIndex: number, numFF: number): string {
+  return `Q${toSubscript(stateBitDisplayIndex(bitIndex, numFF))}`;
+}
+
+export function excitationLabel(
+  prefix: 'J' | 'K' | 'T',
+  bitIndex: number,
+  numFF: number
+): string {
+  return `${prefix}${toSubscript(stateBitDisplayIndex(bitIndex, numFF))}`;
 }
 
 /** Parse comma/space-separated input variable names (e.g. "X", "X,Y", "A B"). */
@@ -68,7 +80,7 @@ export function encodeMinterm(
 export function buildVariableList(numFF: number, inputNames: string[]): string[] {
   const stateVars: string[] = [];
   for (let bit = numFF - 1; bit >= 0; bit -= 1) {
-    stateVars.push(qVarName(bit));
+    stateVars.push(qVarName(bit, numFF));
   }
   return [...stateVars, ...inputNames];
 }
@@ -203,7 +215,7 @@ export function qmMinimize(
 function formatRowLabel(stateCode: number, numStateBits: number): string {
   if (numStateBits === 0) return 'State = 0';
   const stateVars = Array.from({ length: numStateBits }, (_, index) =>
-    qVarName(numStateBits - 1 - index)
+    qVarName(numStateBits - 1 - index, numStateBits)
   ).join('');
   return `${stateVars} = ${formatBinary(stateCode, numStateBits)}`;
 }

@@ -32,7 +32,7 @@ const StateEncodingPanel: React.FC<Props> = ({ rows }) => {
         ))}
       </div>
       <p className="mt-2.5 text-[11px] text-gray-500 leading-relaxed">
-        Binary codes are assigned in state discovery order and used for K-map rows.
+        Binary codes (Q1Q2) are assigned in state discovery order and used for K-map rows.
       </p>
     </div>
   );

@@ -53,26 +53,26 @@ const SchematicGrid = React.memo(function SchematicGrid({
    JK FLIP-FLOP CIRCUIT
    ─────────────────────────────────────────────────────────────────────────────
    Equations (verified against K-Maps):
-     J1 = X' · Q0      ← AND gate: inputs = [X', Q0]
+     J1 = X' · Q2      ← AND gate: inputs = [X', Q2]
      K1 = X' · Q1      ← AND gate: inputs = [X', Q1]
-     J0 = X  ⊕ Q1     ← XOR gate: inputs = [X,  Q1]
-     K0 = X' + Q1'     ← OR  gate: inputs = [X', NOT(Q1)]
-     Z  = X·Q0 + Q1·Q0 ← two ANDs feeding one OR
+     J2 = X  ⊕ Q1     ← XOR gate: inputs = [X,  Q1]
+     K2 = X' + Q1'     ← OR  gate: inputs = [X', NOT(Q1)]
+     Z  = X·Q2 + Q1·Q2 ← two ANDs feeding one OR
 
    Layout columns (left → right):
      Col A  x≈35      NOT(X)  generates X'
-     Col B  x≈140     AND(J1), AND(K1)       driven by {X', Q0/Q1}
+     Col B  x≈140     AND(J1), AND(K1)       driven by {X', Q2/Q1}
      Col C  x≈310     FF1 block
-     Col D  x≈160     XOR(J0), OR(K0)        between the two FFs (shifted left so wires don't overlap)
+     Col D  x≈160     XOR(J2), OR(K2)        between the two FFs (shifted left so wires don't overlap)
               x≈100    NOT(Q1)                below Col A
-     Col E  x≈490     FF0 block
-     Col F  x≈640     AND(Z1=X·Q0), AND(Z2=Q1·Q0)  then OR(Z)
+     Col E  x≈490     FF2 block
+     Col F  x≈640     AND(Z1=X·Q2), AND(Z2=Q1·Q2)  then OR(Z)
      Col G  x≈740     OR(Z) output
 
    Horizontal buses:
      X  bus  y=28     (cyan, entire width)
      X' bus  x=122    vertical (amber, from NOT(X) output downward)
-     Q0 bus  x=600    vertical (white) from FF0.Q, goes UP to top channel y=14 then routes left
+     Q2 bus  x=600    vertical (white) from FF2.Q, goes UP to top channel y=14 then routes left
      Q1 bus  x=420    vertical (white) from FF1.Q, goes DOWN to bot channel y=390 then routes left
    ──────────────────────────────────────────────────────────────────────────────*/
 
@@ -102,17 +102,17 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   /* FF1 */
   const FF1 = { x: 310, y: 90, w: 100, h: 180 };
 
-  /* XOR(J0), OR(K0), NOT(Q1) */
-  const XJ0 = { x: 160, y: 295 };
-  const OK0 = { x: 160, y: 373 };
+  /* XOR(J2), OR(K2), NOT(Q1) */
+  const XJ2 = { x: 160, y: 295 };
+  const OK2 = { x: 160, y: 373 };
   const NQ1 = { x: 65, y: 370 };  // NOT(Q1)
 
-  /* FF0 */
-  const FF0 = { x: 490, y: 90, w: 100, h: 180 };
+  /* FF2 */
+  const FF2 = { x: 490, y: 90, w: 100, h: 180 };
 
   /* Z output gates */
-  const AZ1 = { x: 680, y: 115 };  // AND: X · Q0
-  const AZ2 = { x: 680, y: 185 };  // AND: Q1 · Q0
+  const AZ1 = { x: 680, y: 115 };  // AND: X · Q2
+  const AZ2 = { x: 680, y: 185 };  // AND: Q1 · Q2
   const OZ  = { x: 762, y: 138 };  // OR combines Z1 and Z2
 
   /* FF1 pin Y positions */
@@ -122,18 +122,18 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   const ff1Qy   = FF1.y + ffPinY('JK', 'Q',   FF1.h);
   const ff1QPy  = FF1.y + ffPinY('JK', "Q'",  FF1.h);
 
-  /* FF0 pin Y positions */
-  const ff0Jy   = FF0.y + ffPinY('JK', 'J',   FF0.h);
-  const ff0Ky   = FF0.y + ffPinY('JK', 'K',   FF0.h);
-  const ff0CLKy = FF0.y + ffPinY('JK', 'CLK', FF0.h);
-  const ff0Qy   = FF0.y + ffPinY('JK', 'Q',   FF0.h);
-  const ff0QPy  = FF0.y + ffPinY('JK', "Q'",  FF0.h);
+  /* FF2 pin Y positions */
+  const ff2Jy   = FF2.y + ffPinY('JK', 'J',   FF2.h);
+  const ff2Ky   = FF2.y + ffPinY('JK', 'K',   FF2.h);
+  const ff2CLKy = FF2.y + ffPinY('JK', 'CLK', FF2.h);
+  const ff2Qy   = FF2.y + ffPinY('JK', 'Q',   FF2.h);
+  const ff2QPy  = FF2.y + ffPinY('JK', "Q'",  FF2.h);
 
   /* Bus rail coordinates */
   const xBusY  = 14;    // X  horizontal bus (cyan) near top
   const xpBusX = 122;   // X' vertical bus (amber)
-  const q0BusX = 606;   // Q0 vertical bus right of FF0
-  const q0TopY = 10;    // Q0 top channel
+  const q2BusX = 606;   // Q2 vertical bus right of FF2
+  const q2TopY = 10;    // Q2 top channel
   const q1BusX = 418;   // Q1 vertical bus right of FF1
   const q1BotY = 412;   // Q1 bottom channel
 
@@ -157,11 +157,11 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={CYAN} w={1.8} />
       <Dot x={NX.x} y={xBusY} color={CYAN} />
 
-      {/* X  → XOR(J0) top input */}
+      {/* X  → XOR(J2) top input */}
       <Wire pts={[
         { x: 358, y: xBusY },
-        { x: 358, y: XJ0.y + GATE_PIN_TOP },
-        { x: XJ0.x, y: XJ0.y + GATE_PIN_TOP },
+        { x: 358, y: XJ2.y + GATE_PIN_TOP },
+        { x: XJ2.x, y: XJ2.y + GATE_PIN_TOP },
       ]} color={CYAN} w={1.6} />
       <Dot x={358} y={xBusY} color={CYAN} />
 
@@ -177,7 +177,7 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <Wire pts={[
         { x: NX.x + NOT_W, y: NX.y + NOT_PIN_OUT },
         { x: xpBusX, y: NX.y + NOT_PIN_OUT },
-        { x: xpBusX, y: OK0.y + GATE_PIN_TOP + 3 },
+        { x: xpBusX, y: OK2.y + GATE_PIN_TOP + 3 },
       ]} color={AMBER} w={1.6} />
       <SigLabel x={xpBusX + 2} y={NX.y + NOT_PIN_OUT - 3} text="X'" color={AMBER} size={9} />
 
@@ -195,56 +195,56 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={AMBER} w={1.6} />
       <Dot x={xpBusX} y={AK1.y + GATE_PIN_TOP} color={AMBER} />
 
-      {/* X' rail → OR(K0) top pin (offset +3 for OR shape) */}
+      {/* X' rail → OR(K2) top pin (offset +3 for OR shape) */}
       <Wire pts={[
-        { x: xpBusX, y: OK0.y + GATE_PIN_TOP + 3 },
-        { x: OK0.x + 4, y: OK0.y + GATE_PIN_TOP + 3 },
+        { x: xpBusX, y: OK2.y + GATE_PIN_TOP + 3 },
+        { x: OK2.x + 4, y: OK2.y + GATE_PIN_TOP + 3 },
       ]} color={AMBER} w={1.6} />
-      <Dot x={xpBusX} y={OK0.y + GATE_PIN_TOP + 3} color={AMBER} />
+      <Dot x={xpBusX} y={OK2.y + GATE_PIN_TOP + 3} color={AMBER} />
 
-      {/* ── Q0 bus (white) – from FF0.Q right, up to top channel, then left ── */}
-      {/* FF0.Q → Q0 bus x */}
+      {/* ── Q2 bus (white) – from FF2.Q right, up to top channel, then left ── */}
+      {/* FF2.Q → Q2 bus x */}
       <Wire pts={[
-        { x: FF0.x + FF0.w, y: ff0Qy },
-        { x: q0BusX, y: ff0Qy },
+        { x: FF2.x + FF2.w, y: ff2Qy },
+        { x: q2BusX, y: ff2Qy },
       ]} color={WHITE} w={1.8} />
-      <SigLabel x={q0BusX + 4} y={ff0Qy + 4} text="Q₀" color={WHITE} size={10} />
+      <SigLabel x={q2BusX + 4} y={ff2Qy + 4} text="Q₂" color={WHITE} size={10} />
 
-      {/* Q0 up to top channel */}
+      {/* Q2 up to top channel */}
       <Wire pts={[
-        { x: q0BusX, y: ff0Qy },
-        { x: q0BusX, y: q0TopY },
+        { x: q2BusX, y: ff2Qy },
+        { x: q2BusX, y: q2TopY },
       ]} color={WHITE} w={1.5} />
-      <Dot x={q0BusX} y={ff0Qy} color={WHITE} />
+      <Dot x={q2BusX} y={ff2Qy} color={WHITE} />
 
-      {/* top channel: Q0 routes left to AND(J1) bot, AND(Z1) bot, AND(Z2) bot */}
+      {/* top channel: Q2 routes left to AND(J1) bot, AND(Z1) bot, AND(Z2) bot */}
       <Wire pts={[
-        { x: q0BusX, y: q0TopY },
-        { x: 152, y: q0TopY },
+        { x: q2BusX, y: q2TopY },
+        { x: 152, y: q2TopY },
       ]} color={WHITE} w={1.5} />
-      <Dot x={q0BusX} y={q0TopY} color={WHITE} />
+      <Dot x={q2BusX} y={q2TopY} color={WHITE} />
 
       {/* drop from top channel → AND(J1) bot pin */}
       <Wire pts={[
-        { x: 152, y: q0TopY },
+        { x: 152, y: q2TopY },
         { x: 152, y: AJ1.y + GATE_PIN_BOT },
         { x: AJ1.x, y: AJ1.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
-      <Dot x={152} y={q0TopY} color={WHITE} />
+      <Dot x={152} y={q2TopY} color={WHITE} />
 
       {/* drop → AND(Z1) bot */}
       <Wire pts={[
-        { x: AZ1.x + 4 + GATE_PIN_BOT, y: q0TopY },
+        { x: AZ1.x + 4 + GATE_PIN_BOT, y: q2TopY },
         { x: AZ1.x + 4 + GATE_PIN_BOT, y: AZ1.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
-      <Dot x={AZ1.x + 4 + GATE_PIN_BOT} y={q0TopY} color={WHITE} />
+      <Dot x={AZ1.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
 
-      {/* Q0 also drops → AND(Z2) bot (slightly different x to avoid overlap) */}
+      {/* Q2 also drops → AND(Z2) bot (slightly different x to avoid overlap) */}
       <Wire pts={[
-        { x: AZ2.x + 4 + GATE_PIN_BOT, y: q0TopY },
+        { x: AZ2.x + 4 + GATE_PIN_BOT, y: q2TopY },
         { x: AZ2.x + 4 + GATE_PIN_BOT, y: AZ2.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
-      <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q0TopY} color={WHITE} />
+      <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
 
       {/* ── Q1 bus (white) – from FF1.Q right, down to bot channel, then left ── */}
       <Wire pts={[
@@ -275,11 +275,11 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={WHITE} w={1.5} />
       <Dot x={158} y={q1BotY} color={WHITE} />
 
-      {/* bot channel drop → XOR(J0) bot pin */}
+      {/* bot channel drop → XOR(J2) bot pin */}
       <Wire pts={[
         { x: 172, y: q1BotY },
-        { x: 172, y: XJ0.y + GATE_PIN_BOT },
-        { x: XJ0.x, y: XJ0.y + GATE_PIN_BOT },
+        { x: 172, y: XJ2.y + GATE_PIN_BOT },
+        { x: XJ2.x, y: XJ2.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
       <Dot x={172} y={q1BotY} color={WHITE} />
 
@@ -294,17 +294,17 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       {/* Q1 also feeds AND(Z2) top (offset lane x = q1BusX+6) */}
       <Wire pts={[
         { x: q1BusX + 6, y: ff1Qy },
-        { x: q1BusX + 6, y: q0TopY + 6 },   /* use a slightly lower top channel lane */
-        { x: AZ2.x + 4 + GATE_PIN_TOP, y: q0TopY + 6 },
+        { x: q1BusX + 6, y: q2TopY + 6 },   /* use a slightly lower top channel lane */
+        { x: AZ2.x + 4 + GATE_PIN_TOP, y: q2TopY + 6 },
         { x: AZ2.x + 4 + GATE_PIN_TOP, y: AZ2.y + GATE_PIN_TOP },
       ]} color={WHITE} w={1.5} />
 
-      {/* ── NOT(Q1) output → OR(K0) bot pin (amber, Q1') ── */}
+      {/* ── NOT(Q1) output → OR(K2) bot pin (amber, Q1') ── */}
       <Wire pts={[
         { x: NQ1.x + NOT_W, y: NQ1.y + NOT_PIN_OUT },
         { x: 135, y: NQ1.y + NOT_PIN_OUT },
-        { x: 135, y: OK0.y + GATE_PIN_BOT + 3 },
-        { x: OK0.x + 4, y: OK0.y + GATE_PIN_BOT + 3 },
+        { x: 135, y: OK2.y + GATE_PIN_BOT + 3 },
+        { x: OK2.x + 4, y: OK2.y + GATE_PIN_BOT + 3 },
       ]} color={AMBER} w={1.5} />
       <SigLabel x={NQ1.x + NOT_W + 2} y={NQ1.y + NOT_PIN_OUT - 2} text="Q₁'" color={AMBER} size={9} />
 
@@ -326,20 +326,20 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
         { x: FF1.x, y: ff1Ky },
       ]} color={WHITE} w={1.5} />
 
-      {/* XOR(J0) out → FF0.J (route around FF1) */}
+      {/* XOR(J2) out → FF2.J (route around FF1) */}
       <Wire pts={[
-        { x: gOutX(XJ0.x) + 2, y: XJ0.y + GATE_PIN_OUT },
-        { x: 460, y: XJ0.y + GATE_PIN_OUT },
-        { x: 460, y: ff0Jy },
-        { x: FF0.x, y: ff0Jy },
+        { x: gOutX(XJ2.x) + 2, y: XJ2.y + GATE_PIN_OUT },
+        { x: 460, y: XJ2.y + GATE_PIN_OUT },
+        { x: 460, y: ff2Jy },
+        { x: FF2.x, y: ff2Jy },
       ]} color={WHITE} w={1.5} />
 
-      {/* OR(K0) out → FF0.K */}
+      {/* OR(K2) out → FF2.K */}
       <Wire pts={[
-        { x: orOutX(OK0.x), y: OK0.y + GATE_PIN_OUT },
-        { x: 455, y: OK0.y + GATE_PIN_OUT },
-        { x: 455, y: ff0Ky },
-        { x: FF0.x, y: ff0Ky },
+        { x: orOutX(OK2.x), y: OK2.y + GATE_PIN_OUT },
+        { x: 455, y: OK2.y + GATE_PIN_OUT },
+        { x: 455, y: ff2Ky },
+        { x: FF2.x, y: ff2Ky },
       ]} color={WHITE} w={1.5} />
 
       {/* ══════════════════════════════════════════════
@@ -352,8 +352,8 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={CLKC} dashed w={1.4} />
       <Wire pts={[
         { x: 44, y: ff1CLKy },
-        { x: 44, y: ff0CLKy },
-        { x: FF0.x, y: ff0CLKy },
+        { x: 44, y: ff2CLKy },
+        { x: FF2.x, y: ff2CLKy },
       ]} color={CLKC} dashed w={1.4} />
       <Dot x={44} y={ff1CLKy} color={CLKC} r={2.5} />
 
@@ -367,10 +367,10 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <SigLabel x={FF1.x + FF1.w + 16} y={ff1QPy + 3} text="Q₁'" color={DIMW} size={9} />
 
       <Wire pts={[
-        { x: FF0.x + FF0.w, y: ff0QPy },
-        { x: FF0.x + FF0.w + 14, y: ff0QPy },
+        { x: FF2.x + FF2.w, y: ff2QPy },
+        { x: FF2.x + FF2.w + 14, y: ff2QPy },
       ]} color={DIMW} w={1.4} />
-      <SigLabel x={FF0.x + FF0.w + 16} y={ff0QPy + 3} text="Q₀'" color={DIMW} size={9} />
+      <SigLabel x={FF2.x + FF2.w + 16} y={ff2QPy + 3} text="Q₂'" color={DIMW} size={9} />
 
       {/* ══════════════════════════════════════════════
           Z output network
@@ -402,27 +402,27 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <NotGate x={NX.x}  y={NX.y}  />
       <AndGate x={AJ1.x} y={AJ1.y} />
       <AndGate x={AK1.x} y={AK1.y} />
-      <XorGate x={XJ0.x} y={XJ0.y} />
-      <OrGate  x={OK0.x} y={OK0.y} />
+      <XorGate x={XJ2.x} y={XJ2.y} />
+      <OrGate  x={OK2.x} y={OK2.y} />
       <NotGate x={NQ1.x} y={NQ1.y} />
       <AndGate x={AZ1.x} y={AZ1.y} />
       <AndGate x={AZ2.x} y={AZ2.y} />
       <OrGate  x={OZ.x}  y={OZ.y}  />
 
       <FlipFlopBlock x={FF1.x} y={FF1.y} width={FF1.w} height={FF1.h} type="JK" label="FF₁" />
-      <FlipFlopBlock x={FF0.x} y={FF0.y} width={FF0.w} height={FF0.h} type="JK" label="FF₀" />
+      <FlipFlopBlock x={FF2.x} y={FF2.y} width={FF2.w} height={FF2.h} type="JK" label="FF₂" />
 
       {/* ══════════════════════════════════════════════
           EQUATION BADGES
           ══════════════════════════════════════════════ */}
-      <EqBadge x={AJ1.x} y={AJ1.y - 15} eq={toBadge('J₁', findEquation(kmaps, 'J₁'), "X'·Q₀")} />
+      <EqBadge x={AJ1.x} y={AJ1.y - 15} eq={toBadge('J₁', findEquation(kmaps, 'J₁'), "X'·Q₂")} />
       <EqBadge x={AK1.x} y={AK1.y - 15} eq={toBadge('K₁', findEquation(kmaps, 'K₁'), "X'·Q₁")} />
-      <EqBadge x={XJ0.x} y={XJ0.y - 15} eq={toBadge('J₀', findEquation(kmaps, 'J₀'), 'X⊕Q₁')} />
-      <EqBadge x={OK0.x} y={OK0.y - 15} eq={toBadge('K₀', findEquation(kmaps, 'K₀'), "X'+Q₁'")} />
+      <EqBadge x={XJ2.x} y={XJ2.y - 15} eq={toBadge('J₂', findEquation(kmaps, 'J₂'), 'X⊕Q₁')} />
+      <EqBadge x={OK2.x} y={OK2.y - 15} eq={toBadge('K₂', findEquation(kmaps, 'K₂'), "X'+Q₁'")} />
       <EqBadge
         x={AZ1.x - 10}
         y={AZ1.y - 15}
-        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 'X·Q₀+Q₁·Q₀')}
+        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 'X·Q₂+Q₁·Q₂')}
       />
 
       {/* Legend */}
@@ -435,28 +435,25 @@ const JKCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
    T FLIP-FLOP CIRCUIT
    ─────────────────────────────────────────────────────────────────────────────
    Equations:
-     T1 = X · Q0' + X' · Q0  =  X ⊕ Q0   (needs to be updated from XOR)
-         wait — from K-Map: T1 = X·Q0' + X'·Q0 = X⊕Q0  (checking circuitData)
-         circuitData says: T₁ = X · Q₀' + X' · Q₀  (but also equation 'T₁ = X · Q₀\' + X\' · Q₀')
-         So T1 = X XOR Q0
-     T0 = X ⊕ Q1
-     Z  = Q1·Q0 + X·Q0
+     T1 = X · Q2' + X' · Q2  =  X ⊕ Q2
+     T2 = X ⊕ Q1
+     Z  = Q1·Q2 + X·Q2
 ──────────────────────────────────────────────────────────────────────────────*/
 
 const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   const SVG_W = 800, SVG_H = 390;
 
   /* XOR gates */
-  const XT1 = { x: 140, y: 110 };  // T1 = X ⊕ Q0
-  const XT0 = { x: 140, y: 210 };  // T0 = X ⊕ Q1
+  const XT1 = { x: 140, y: 110 };  // T1 = X ⊕ Q2
+  const XT2 = { x: 140, y: 210 };  // T2 = X ⊕ Q1
 
   /* Flip-flops */
   const FF1 = { x: 330, y: 90, w: 100, h: 160 };
-  const FF0 = { x: 490, y: 90, w: 100, h: 160 };
+  const FF2 = { x: 490, y: 90, w: 100, h: 160 };
 
   /* Z output gates */
-  const AZ1 = { x: 640, y: 110 };  // Q1·Q0
-  const AZ2 = { x: 640, y: 185 };  // X·Q0
+  const AZ1 = { x: 640, y: 110 };  // Q1·Q2
+  const AZ2 = { x: 640, y: 185 };  // X·Q2
   const OZ  = { x: 722, y: 135 };
 
   /* FF1 pin Y */
@@ -465,15 +462,15 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
   const ff1Qy   = FF1.y + ffPinY('T', 'Q',   FF1.h);
   const ff1QPy  = FF1.y + ffPinY('T', "Q'",  FF1.h);
 
-  /* FF0 pin Y */
-  const ff0Ty   = FF0.y + ffPinY('T', 'T',   FF0.h);
-  const ff0CLKy = FF0.y + ffPinY('T', 'CLK', FF0.h);
-  const ff0Qy   = FF0.y + ffPinY('T', 'Q',   FF0.h);
-  const ff0QPy  = FF0.y + ffPinY('T', "Q'",  FF0.h);
+  /* FF2 pin Y */
+  const ff2Ty   = FF2.y + ffPinY('T', 'T',   FF2.h);
+  const ff2CLKy = FF2.y + ffPinY('T', 'CLK', FF2.h);
+  const ff2Qy   = FF2.y + ffPinY('T', 'Q',   FF2.h);
+  const ff2QPy  = FF2.y + ffPinY('T', "Q'",  FF2.h);
 
   const xBusY   = 14;
-  const q0BusX  = 605;
-  const q0TopY  = 10;
+  const q2BusX  = 605;
+  const q2TopY  = 10;
   const q1BusX  = 445;
   const q1BotY  = 355;
 
@@ -500,38 +497,38 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       ]} color={CYAN} w={1.6} />
       <Dot x={AZ2.x + 4 + GATE_PIN_TOP} y={xBusY} color={CYAN} />
 
-      {/* Q0 bus: FF0.Q → right, up to top channel, then left */}
+      {/* Q2 bus: FF2.Q → right, up to top channel, then left */}
       <Wire pts={[
-        { x: FF0.x + FF0.w, y: ff0Qy },
-        { x: q0BusX, y: ff0Qy },
+        { x: FF2.x + FF2.w, y: ff2Qy },
+        { x: q2BusX, y: ff2Qy },
       ]} color={WHITE} w={1.8} />
-      <SigLabel x={q0BusX + 4} y={ff0Qy + 4} text="Q₀" color={WHITE} size={10} />
-      <Wire pts={[{ x: q0BusX, y: ff0Qy }, { x: q0BusX, y: q0TopY }]} color={WHITE} w={1.5} />
-      <Dot x={q0BusX} y={ff0Qy} color={WHITE} />
-      <Wire pts={[{ x: q0BusX, y: q0TopY }, { x: 152, y: q0TopY }]} color={WHITE} w={1.5} />
-      <Dot x={q0BusX} y={q0TopY} color={WHITE} />
+      <SigLabel x={q2BusX + 4} y={ff2Qy + 4} text="Q₂" color={WHITE} size={10} />
+      <Wire pts={[{ x: q2BusX, y: ff2Qy }, { x: q2BusX, y: q2TopY }]} color={WHITE} w={1.5} />
+      <Dot x={q2BusX} y={ff2Qy} color={WHITE} />
+      <Wire pts={[{ x: q2BusX, y: q2TopY }, { x: 152, y: q2TopY }]} color={WHITE} w={1.5} />
+      <Dot x={q2BusX} y={q2TopY} color={WHITE} />
 
-      {/* Q0 top → XOR(T1) bot */}
+      {/* Q2 top → XOR(T1) bot */}
       <Wire pts={[
-        { x: 152, y: q0TopY },
+        { x: 152, y: q2TopY },
         { x: 152, y: XT1.y + GATE_PIN_BOT },
         { x: XT1.x, y: XT1.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
-      <Dot x={152} y={q0TopY} color={WHITE} />
+      <Dot x={152} y={q2TopY} color={WHITE} />
 
-      {/* Q0 top → AND(Z1) bot */}
+      {/* Q2 top → AND(Z1) bot */}
       <Wire pts={[
-        { x: AZ1.x + 4 + GATE_PIN_BOT, y: q0TopY },
+        { x: AZ1.x + 4 + GATE_PIN_BOT, y: q2TopY },
         { x: AZ1.x + 4 + GATE_PIN_BOT, y: AZ1.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
-      <Dot x={AZ1.x + 4 + GATE_PIN_BOT} y={q0TopY} color={WHITE} />
+      <Dot x={AZ1.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
 
-      {/* Q0 top → AND(Z2) bot */}
+      {/* Q2 top → AND(Z2) bot */}
       <Wire pts={[
-        { x: AZ2.x + 4 + GATE_PIN_BOT, y: q0TopY },
+        { x: AZ2.x + 4 + GATE_PIN_BOT, y: q2TopY },
         { x: AZ2.x + 4 + GATE_PIN_BOT, y: AZ2.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
-      <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q0TopY} color={WHITE} />
+      <Dot x={AZ2.x + 4 + GATE_PIN_BOT} y={q2TopY} color={WHITE} />
 
       {/* Q1 bus: FF1.Q → right, down to bot channel, then left */}
       <Wire pts={[
@@ -544,27 +541,27 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <Wire pts={[{ x: q1BusX, y: q1BotY }, { x: 152, y: q1BotY }]} color={WHITE} w={1.5} />
       <Dot x={q1BusX} y={q1BotY} color={WHITE} />
 
-      {/* Q1 bot → XOR(T0) bot */}
+      {/* Q1 bot → XOR(T2) bot */}
       <Wire pts={[
         { x: 162, y: q1BotY },
-        { x: 162, y: XT0.y + GATE_PIN_BOT },
-        { x: XT0.x, y: XT0.y + GATE_PIN_BOT },
+        { x: 162, y: XT2.y + GATE_PIN_BOT },
+        { x: XT2.x, y: XT2.y + GATE_PIN_BOT },
       ]} color={WHITE} w={1.5} />
       <Dot x={162} y={q1BotY} color={WHITE} />
 
       {/* Q1 bot → AND(Z1) top (slightly offset lane) */}
       <Wire pts={[
         { x: q1BusX + 6, y: ff1Qy },
-        { x: q1BusX + 6, y: q0TopY + 6 },
-        { x: AZ1.x + 4 + GATE_PIN_TOP, y: q0TopY + 6 },
+        { x: q1BusX + 6, y: q2TopY + 6 },
+        { x: AZ1.x + 4 + GATE_PIN_TOP, y: q2TopY + 6 },
         { x: AZ1.x + 4 + GATE_PIN_TOP, y: AZ1.y + GATE_PIN_TOP },
       ]} color={WHITE} w={1.5} />
 
-      {/* X → XOR(T0) top */}
+      {/* X → XOR(T2) top */}
       <Wire pts={[
         { x: 255, y: xBusY },
-        { x: 255, y: XT0.y + GATE_PIN_TOP },
-        { x: XT0.x, y: XT0.y + GATE_PIN_TOP },
+        { x: 255, y: XT2.y + GATE_PIN_TOP },
+        { x: XT2.x, y: XT2.y + GATE_PIN_TOP },
       ]} color={CYAN} w={1.6} />
       <Dot x={255} y={xBusY} color={CYAN} />
 
@@ -575,12 +572,12 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
         { x: FF1.x, y: ff1Ty },
       ]} color={WHITE} w={1.5} />
 
-      {/* XOR(T0) → FF0.T */}
+      {/* XOR(T2) → FF2.T */}
       <Wire pts={[
-        { x: gOutX(XT0.x) + 2, y: XT0.y + GATE_PIN_OUT },
-        { x: 454, y: XT0.y + GATE_PIN_OUT },
-        { x: 454, y: ff0Ty },
-        { x: FF0.x, y: ff0Ty },
+        { x: gOutX(XT2.x) + 2, y: XT2.y + GATE_PIN_OUT },
+        { x: 454, y: XT2.y + GATE_PIN_OUT },
+        { x: 454, y: ff2Ty },
+        { x: FF2.x, y: ff2Ty },
       ]} color={WHITE} w={1.5} />
 
       {/* CLK */}
@@ -588,16 +585,16 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
       <Wire pts={[{ x: 44, y: ff1CLKy }, { x: FF1.x, y: ff1CLKy }]} color={CLKC} dashed w={1.4} />
       <Wire pts={[
         { x: 44, y: ff1CLKy },
-        { x: 44, y: ff0CLKy },
-        { x: FF0.x, y: ff0CLKy },
+        { x: 44, y: ff2CLKy },
+        { x: FF2.x, y: ff2CLKy },
       ]} color={CLKC} dashed w={1.4} />
       <Dot x={44} y={ff1CLKy} color={CLKC} r={2.5} />
 
       {/* Q' stubs */}
       <Wire pts={[{ x: FF1.x + FF1.w, y: ff1QPy }, { x: FF1.x + FF1.w + 14, y: ff1QPy }]} color={DIMW} w={1.4} />
       <SigLabel x={FF1.x + FF1.w + 16} y={ff1QPy + 3} text="Q₁'" color={DIMW} size={9} />
-      <Wire pts={[{ x: FF0.x + FF0.w, y: ff0QPy }, { x: FF0.x + FF0.w + 14, y: ff0QPy }]} color={DIMW} w={1.4} />
-      <SigLabel x={FF0.x + FF0.w + 16} y={ff0QPy + 3} text="Q₀'" color={DIMW} size={9} />
+      <Wire pts={[{ x: FF2.x + FF2.w, y: ff2QPy }, { x: FF2.x + FF2.w + 14, y: ff2QPy }]} color={DIMW} w={1.4} />
+      <SigLabel x={FF2.x + FF2.w + 16} y={ff2QPy + 3} text="Q₂'" color={DIMW} size={9} />
 
       {/* Z network */}
       <Wire pts={[
@@ -618,20 +615,20 @@ const TCircuit: React.FC<{ kmaps: KMap[] }> = ({ kmaps }) => {
 
       {/* Gates & FFs */}
       <XorGate x={XT1.x} y={XT1.y} />
-      <XorGate x={XT0.x} y={XT0.y} />
+      <XorGate x={XT2.x} y={XT2.y} />
       <AndGate x={AZ1.x} y={AZ1.y} />
       <AndGate x={AZ2.x} y={AZ2.y} />
       <OrGate  x={OZ.x}  y={OZ.y}  />
       <FlipFlopBlock x={FF1.x} y={FF1.y} width={FF1.w} height={FF1.h} type="T" label="FF₁" />
-      <FlipFlopBlock x={FF0.x} y={FF0.y} width={FF0.w} height={FF0.h} type="T" label="FF₀" />
+      <FlipFlopBlock x={FF2.x} y={FF2.y} width={FF2.w} height={FF2.h} type="T" label="FF₂" />
 
       {/* Badges */}
-      <EqBadge x={XT1.x} y={XT1.y - 15} eq={toBadge('T₁', findEquation(kmaps, 'T₁'), 'X⊕Q₀')} />
-      <EqBadge x={XT0.x} y={XT0.y - 15} eq={toBadge('T₀', findEquation(kmaps, 'T₀'), 'X⊕Q₁')} />
+      <EqBadge x={XT1.x} y={XT1.y - 15} eq={toBadge('T₁', findEquation(kmaps, 'T₁'), 'X⊕Q₂')} />
+      <EqBadge x={XT2.x} y={XT2.y - 15} eq={toBadge('T₂', findEquation(kmaps, 'T₂'), 'X⊕Q₁')} />
       <EqBadge
         x={AZ1.x - 10}
         y={AZ1.y - 15}
-        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 'Q₁·Q₀+X·Q₀')}
+        eq={toBadge('Z', findEquation(kmaps, 'Z (Output)'), 'Q₁·Q₂+X·Q₂')}
       />
 
       <Legend x={SVG_W - 246} y={SVG_H - 62} />

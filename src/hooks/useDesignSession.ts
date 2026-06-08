@@ -219,7 +219,7 @@ export function useDesignSession(): DesignSession {
       `Inputs: ${design.inputVars} | Outputs: ${design.outputVars}`,
       '',
       'State Table:',
-      'Present State\tInput\tNext State\tOutput',
+      'Current State (Q1,Q2)\tInput\tNext State (Q1+,Q2+)\tOutput',
       ...design.stateTable.map(
         (row) =>
           `${row.presentState}\t${row.input}\t${row.nextState}\t${row.output}`
