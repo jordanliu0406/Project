@@ -29,6 +29,22 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
     setPanY(0);
   }, []);
 
+  // Fit schematic to screen
+  const handleFitToScreen = useCallback(() => {
+    if (!svgContainerRef.current) return;
+    
+    const containerWidth = svgContainerRef.current.clientWidth;
+    const containerHeight = svgContainerRef.current.clientHeight;
+    
+    const scaleX = (containerWidth - 40) / svgWidth;
+    const scaleY = (containerHeight - 40) / svgHeight;
+    const scale = Math.min(scaleX, scaleY, 2);
+    
+    setZoom(Math.round(scale * 100));
+    setPanX(0);
+    setPanY(0);
+  }, [svgWidth, svgHeight]);
+
   // Zoom in
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(prev + 20, 220));
@@ -309,6 +325,15 @@ export const SchematicViewer: React.FC<SchematicViewerProps> = ({
           aria-label="Reset View"
         >
           Reset
+        </button>
+
+        <button
+          onClick={handleFitToScreen}
+          className="px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded transition-colors whitespace-nowrap"
+          title="Fit to Screen"
+          aria-label="Fit to Screen"
+        >
+          Fit
         </button>
 
         {/* Divider */}
